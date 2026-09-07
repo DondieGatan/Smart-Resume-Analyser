@@ -594,6 +594,36 @@ def verify_reset_code(email, code):
     return False
 
 
+def reset_token_still_valid(email):
+    """Whether the reset window opened by a prior successful
+    verify_reset_code() call for this email hasn't expired yet. The
+    /reset-password route only gates on a Flask session flag with no
+    expiry of its own, so without this second, time-based check here, a
+    browser tab left open past the 10-minute code window could still set a
+    new password with no live verification at all."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT reset_token, reset_token_expiry FROM users WHERE email = ?",
+        (email.lower().strip(),)
+    )
+    row = cursor.fetchone()
+    if not row:
+        cursor.close()
+        conn.close()
+        return False
+
+    user = _row_to_dict(cursor, row)
+    cursor.close()
+    conn.close()
+
+    return bool(
+        user['reset_token']
+        and user['reset_token_expiry']
+        and user['reset_token_expiry'] >= datetime.now()
+    )
+
+
 def create_email_verification_code(email):
     """Generate a 6-digit email-verification code. Returns code or None."""
     conn = get_db_connection()

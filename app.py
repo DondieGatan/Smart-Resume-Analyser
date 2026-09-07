@@ -19,6 +19,7 @@ from models import (save_resume, save_skills, save_education, save_experience,
                     get_dashboard_data, init_users_table, register_user,
                     authenticate_user, get_user_by_id, get_user_by_email,
                     create_reset_code, verify_reset_code, reset_user_password,
+                    reset_token_still_valid,
                     create_email_verification_code, verify_email_code,
                     ensure_schema_migrations, delete_resume, delete_account,
                     get_resume_filenames_for_user, user_owns_file)
@@ -327,6 +328,11 @@ def reset_password():
     email = session.get('reset_email')
     if not email:
         flash('Please verify your code first.', 'error')
+        return redirect(url_for('forgot_password'))
+
+    if not reset_token_still_valid(email):
+        session.pop('reset_email', None)
+        flash('Your reset code has expired. Please start again.', 'error')
         return redirect(url_for('forgot_password'))
 
     if request.method == 'POST':

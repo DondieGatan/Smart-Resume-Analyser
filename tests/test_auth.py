@@ -8,6 +8,7 @@ to the database directly rather than through an injectable interface.
 import hashlib
 import secrets
 import uuid
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -19,6 +20,9 @@ from models import (
     _verify_password,
     _is_legacy_hash,
     delete_account,
+    create_reset_code,
+    reset_token_still_valid,
+    reset_user_password,
 )
 
 
@@ -137,3 +141,44 @@ class TestLegacyHashMigration:
 
         # The new hash must still authenticate with the same password.
         assert authenticate_user(email, password) is not None
+
+
+class TestPasswordResetExpiry:
+    """The /reset-password route only gates on a Flask session flag with no
+    expiry of its own — reset_token_still_valid() is the second, time-based
+    check that closes the gap where a browser tab left open past the
+    10-minute code window could otherwise still set a new password with no
+    live verification at all."""
+
+    def test_no_reset_requested_is_invalid(self, test_user):
+        email, _ = test_user
+        assert reset_token_still_valid(email) is False
+
+    def test_freshly_requested_code_is_valid(self, test_user):
+        email, _ = test_user
+        create_reset_code(email)
+        assert reset_token_still_valid(email) is True
+
+    def test_expired_code_is_invalid(self, test_user):
+        email, _ = test_user
+        create_reset_code(email)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET reset_token_expiry = ? WHERE email = ?",
+            (datetime.now() - timedelta(minutes=1), email),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        assert reset_token_still_valid(email) is False
+
+    def test_already_used_code_is_invalid(self, test_user):
+        email, password = test_user
+        create_reset_code(email)
+        reset_user_password(email, 'BrandNewPassword123')
+        assert reset_token_still_valid(email) is False
+        # restore for the fixture's own teardown/login-based cleanup
+        reset_user_password(email, password)
