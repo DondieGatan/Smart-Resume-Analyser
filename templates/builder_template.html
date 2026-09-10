@@ -874,8 +874,33 @@ function cleanAllTextareas() {
 }
 
 // ---------- AI Assistant chat ----------
-var aiChatHistory = [];
+var AI_CHAT_KEY = 'builderAiChat_' + TEMPLATE_ID;
+var aiChatHistory = loadAiChatHistory();
 var aiChatOpen = false;
+
+function loadAiChatHistory() {
+    var raw;
+    try {
+        raw = localStorage.getItem(AI_CHAT_KEY);
+    } catch (e) {
+        return [];
+    }
+    if (!raw) return [];
+    try {
+        var parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveAiChatHistory() {
+    try {
+        localStorage.setItem(AI_CHAT_KEY, JSON.stringify(aiChatHistory));
+    } catch (e) {
+        // localStorage unavailable (private mode, quota, etc.) — nothing to persist against
+    }
+}
 
 function toggleAiChat() {
     aiChatOpen = !aiChatOpen;
@@ -1064,6 +1089,7 @@ function sendChatText(message) {
             aiChatHistory.push({ role: 'user', content: message });
             aiChatHistory.push({ role: 'assistant', content: result.data.reply });
             if (aiChatHistory.length > 20) aiChatHistory = aiChatHistory.slice(-20);
+            saveAiChatHistory();
         } else {
             appendAiChatMessage('bot', result.data.error || 'Something went wrong. Please try again.');
         }
@@ -1106,6 +1132,10 @@ function sendChatText(message) {
     if (restored && restored.savedAt) {
         updateDraftStatus(restored.savedAt);
     }
+
+    aiChatHistory.forEach(function(entry) {
+        appendAiChatMessage(entry.role, entry.content);
+    });
 
     generatePreview();
     updateProgress();
