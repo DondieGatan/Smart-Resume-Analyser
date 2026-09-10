@@ -1,17 +1,10 @@
 FROM python:3.11-slim
 
-# System dependencies: ODBC Driver 17 for SQL Server (pyodbc) and the
-# Tesseract OCR binary (pytesseract is just a Python wrapper around it).
-# The Microsoft repo's signing key must be dearmored into the exact path
-# its own prod.list expects (signed-by=/usr/share/keyrings/microsoft-prod.gpg)
-# — just tee-ing the raw .asc into trusted.gpg.d works on some older apt/gpg
-# combinations but fails signature verification on this image's apt.
+# System dependencies: just the Tesseract OCR binary (pytesseract is a
+# Python wrapper around it). psycopg[binary] bundles its own libpq, so no
+# system Postgres client library is needed.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl gnupg unixodbc unixodbc-dev tesseract-ocr \
-    && curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    && curl -sSL https://packages.microsoft.com/config/debian/12/prod.list -o /etc/apt/sources.list.d/mssql-release.list \
-    && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql17 \
+        tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

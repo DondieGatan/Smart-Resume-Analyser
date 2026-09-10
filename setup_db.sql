@@ -1,99 +1,56 @@
--- Smart Resume Analyser Database Schema for Microsoft SQL Server
--- Run this script in SSMS or via sqlcmd to set up the database
+-- Smart Resume Analyser database schema for Postgres (Neon free tier).
+-- Run this against the schema named by DB_SCHEMA (see config.py) — the
+-- connection's search_path must already point there (models.py's
+-- get_db_connection() does this via `options=-c search_path=<schema>`),
+-- so table names below are deliberately unqualified.
 
--- Create database
-IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'smart_resume_analyser')
-BEGIN
-    CREATE DATABASE smart_resume_analyser;
-END
-GO
+CREATE TABLE IF NOT EXISTS resumes (
+    id SERIAL PRIMARY KEY,
+    user_id INT NULL,
+    candidate_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    filename VARCHAR(255) NOT NULL,
+    raw_text TEXT,
+    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-USE smart_resume_analyser;
-GO
+CREATE TABLE IF NOT EXISTS skills (
+    id SERIAL PRIMARY KEY,
+    resume_id INT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    skill_name VARCHAR(100) NOT NULL,
+    category VARCHAR(50)
+);
 
--- Table to store uploaded resumes and analysis results
--- Note: user_id has no FK constraint here because this script may run
--- before the users table exists (that table is created separately by
--- setup_users_table.sql / models.init_users_table()). Ownership is
--- enforced at the application layer instead.
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'resumes')
-BEGIN
-    CREATE TABLE resumes (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        user_id INT NULL,
-        candidate_name NVARCHAR(255) NOT NULL,
-        email NVARCHAR(255),
-        phone NVARCHAR(50),
-        filename NVARCHAR(255) NOT NULL,
-        raw_text NVARCHAR(MAX),
-        upload_date DATETIME DEFAULT GETDATE()
-    );
-END
-GO
+CREATE TABLE IF NOT EXISTS education (
+    id SERIAL PRIMARY KEY,
+    resume_id INT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    degree VARCHAR(255),
+    institution VARCHAR(255)
+);
 
--- Table to store extracted skills
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'skills')
-BEGIN
-    CREATE TABLE skills (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        resume_id INT NOT NULL,
-        skill_name NVARCHAR(100) NOT NULL,
-        category NVARCHAR(50),
-        FOREIGN KEY (resume_id) REFERENCES resumes(id) ON DELETE CASCADE
-    );
-END
-GO
+CREATE TABLE IF NOT EXISTS experience (
+    id SERIAL PRIMARY KEY,
+    resume_id INT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    title VARCHAR(255),
+    company VARCHAR(255),
+    description TEXT
+);
 
--- Table to store education details
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'education')
-BEGIN
-    CREATE TABLE education (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        resume_id INT NOT NULL,
-        degree NVARCHAR(255),
-        institution NVARCHAR(255),
-        FOREIGN KEY (resume_id) REFERENCES resumes(id) ON DELETE CASCADE
-    );
-END
-GO
+CREATE TABLE IF NOT EXISTS analysis_results (
+    id SERIAL PRIMARY KEY,
+    resume_id INT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    overall_score INT DEFAULT 0,
+    skills_score INT DEFAULT 0,
+    education_score INT DEFAULT 0,
+    experience_score INT DEFAULT 0,
+    formatting_score INT DEFAULT 0,
+    recommended_field VARCHAR(100),
+    recommendations TEXT,
+    analysed_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Table to store work experience
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'experience')
-BEGIN
-    CREATE TABLE experience (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        resume_id INT NOT NULL,
-        title NVARCHAR(255),
-        company NVARCHAR(255),
-        description NVARCHAR(MAX),
-        FOREIGN KEY (resume_id) REFERENCES resumes(id) ON DELETE CASCADE
-    );
-END
-GO
-
--- Table to store analysis scores and recommendations
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'analysis_results')
-BEGIN
-    CREATE TABLE analysis_results (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        resume_id INT NOT NULL,
-        overall_score INT DEFAULT 0,
-        skills_score INT DEFAULT 0,
-        education_score INT DEFAULT 0,
-        experience_score INT DEFAULT 0,
-        formatting_score INT DEFAULT 0,
-        recommended_field NVARCHAR(100),
-        recommendations NVARCHAR(MAX),
-        analysed_date DATETIME DEFAULT GETDATE(),
-        FOREIGN KEY (resume_id) REFERENCES resumes(id) ON DELETE CASCADE
-    );
-END
-GO
-
--- View for Power BI dashboard
-IF EXISTS (SELECT * FROM sys.views WHERE name = 'resume_dashboard')
-    DROP VIEW resume_dashboard;
-GO
+DROP VIEW IF EXISTS resume_dashboard;
 
 CREATE VIEW resume_dashboard AS
 SELECT
@@ -111,4 +68,3 @@ SELECT
     (SELECT COUNT(*) FROM skills s WHERE s.resume_id = r.id) AS total_skills
 FROM resumes r
 LEFT JOIN analysis_results ar ON ar.resume_id = r.id;
-GO

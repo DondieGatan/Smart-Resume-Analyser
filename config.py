@@ -34,15 +34,14 @@ if not _env_secret_key:
 class Config:
     SECRET_KEY = _env_secret_key or _load_or_create_dev_secret_key()
 
-    # Microsoft SQL Server Database Configuration
-    SQL_SERVER = os.environ.get('SQL_SERVER', 'localhost')
-    SQL_DATABASE = os.environ.get('SQL_DATABASE', 'smart_resume_analyser')
-    SQL_DRIVER = os.environ.get('SQL_DRIVER', '{ODBC Driver 17 for SQL Server}')
-    # Use Windows Authentication by default (Trusted Connection)
-    SQL_TRUSTED_CONNECTION = os.environ.get('SQL_TRUSTED_CONNECTION', 'yes')
-    # Or use SQL Server Authentication
-    SQL_USERNAME = os.environ.get('SQL_USERNAME', '')
-    SQL_PASSWORD = os.environ.get('SQL_PASSWORD', '')
+    # Postgres (Neon, free tier) — the app's sole database since the Azure
+    # SQL server it originally ran on was decommissioned. DATABASE_URL is
+    # required; there is no more MSSQL/pyodbc fallback (see models.py).
+    # DB_SCHEMA lets one Neon project host separate schemas per environment
+    # (e.g. "resume_analyser" in production, "resume_analyser_dev" locally)
+    # without needing separate free databases.
+    DATABASE_URL = os.environ.get('DATABASE_URL', '')
+    DB_SCHEMA = os.environ.get('DB_SCHEMA', 'resume_analyser')
 
     # Upload Configuration
     # Deliberately NOT under static/ — resumes contain PII (names, emails,

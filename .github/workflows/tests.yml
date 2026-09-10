@@ -11,15 +11,15 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+      postgres:
+        image: postgres:16-alpine
         env:
-          ACCEPT_EULA: Y
-          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD || 'CiPytestPassw0rd!' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_CI_PASSWORD || 'CiPytestPassw0rd!' }}
+          POSTGRES_DB: postgres
         ports:
-          - 1433:1433
+          - 5432:5432
         options: >-
-          --health-cmd="exit 0"
+          --health-cmd="pg_isready -U postgres"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -29,25 +29,12 @@ jobs:
       # `python scripts/foo.py` puts scripts/ on sys.path, not the repo
       # root, so without this the import fails with ModuleNotFoundError.
       PYTHONPATH: ${{ github.workspace }}
-      SQL_SERVER: localhost
-      SQL_DATABASE: smart_resume_analyser
-      # Matches config.py's own default driver — installed below to match.
-      SQL_TRUSTED_CONNECTION: "no"
-      SQL_USERNAME: sa
-      SQL_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD || 'CiPytestPassw0rd!' }}
+      DATABASE_URL: postgresql://postgres:${{ secrets.POSTGRES_CI_PASSWORD || 'CiPytestPassw0rd!' }}@localhost:5432/postgres
+      DB_SCHEMA: resume_analyser_ci
       SECRET_KEY: ci-test-secret-key
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install ODBC Driver 17 for SQL Server
-        run: |
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
-          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
-          sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17 unixodbc unixodbc-dev
-          odbcinst -j
-          odbcinst -q -d
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -57,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
-      - name: Wait for SQL Server to accept connections
+      - name: Wait for Postgres to accept connections
         run: python scripts/wait_for_sql.py
 
       - name: Create schema (resumes/skills/education/experience/analysis_results)

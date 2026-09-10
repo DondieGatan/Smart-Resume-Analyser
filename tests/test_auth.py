@@ -1,6 +1,6 @@
 """Tests for password hashing and the legacy-format migration path.
 
-Requires a real, reachable SQL Server database configured the same way the
+Requires a real, reachable Postgres database configured the same way the
 app itself is (see .env.example / config.py) — these are integration
 tests, not pure unit tests, because the auth functions in models.py talk
 to the database directly rather than through an injectable interface.
@@ -51,8 +51,8 @@ def test_user():
         # overwrite tests) — clean up by email directly.
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM resumes WHERE user_id = (SELECT id FROM users WHERE email = ?)", (email,))
-        cursor.execute("DELETE FROM users WHERE email = ?", (email,))
+        cursor.execute("DELETE FROM resumes WHERE user_id = (SELECT id FROM users WHERE email = %s)", (email,))
+        cursor.execute("DELETE FROM users WHERE email = %s", (email,))
         conn.commit()
         cursor.close()
         conn.close()
@@ -84,7 +84,7 @@ class TestRegisterAndLogin:
         email, password = test_user
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT password_hash FROM users WHERE email = ?", (email,))
+        cursor.execute("SELECT password_hash FROM users WHERE email = %s", (email,))
         stored = cursor.fetchone()[0]
         cursor.close()
         conn.close()
@@ -116,11 +116,11 @@ class TestLegacyHashMigration:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE users SET password_hash = ? WHERE email = ?",
+            "UPDATE users SET password_hash = %s WHERE email = %s",
             (_legacy_hash(password), email)
         )
         conn.commit()
-        cursor.execute("SELECT password_hash FROM users WHERE email = ?", (email,))
+        cursor.execute("SELECT password_hash FROM users WHERE email = %s", (email,))
         before = cursor.fetchone()[0]
         cursor.close()
         conn.close()
@@ -133,7 +133,7 @@ class TestLegacyHashMigration:
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT password_hash FROM users WHERE email = ?", (email,))
+        cursor.execute("SELECT password_hash FROM users WHERE email = %s", (email,))
         after = cursor.fetchone()[0]
         cursor.close()
         conn.close()
@@ -166,7 +166,7 @@ class TestPasswordResetExpiry:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE users SET reset_token_expiry = ? WHERE email = ?",
+            "UPDATE users SET reset_token_expiry = %s WHERE email = %s",
             (datetime.now() - timedelta(minutes=1), email),
         )
         conn.commit()
