@@ -31,7 +31,7 @@ ATS-compatibility check and concrete suggestions for improvement.
 
 ## Stack
 
-Python · Flask · SQL Server (`pyodbc`) · NLTK · PyMuPDF · Tesseract OCR
+Python · Flask · Postgres (`psycopg`) · NLTK · PyMuPDF · Tesseract OCR
 (`pytesseract`) · Flask-Mail · HTML/CSS/JS
 
 ## Project layout
@@ -48,17 +48,18 @@ uploads/            Uploaded resume files (gitignored — not under static/,
                     served through the authenticated /uploads/<filename> route)
 setup_db.sql        Core schema (resumes, skills, education, experience)
 setup_users_table.sql   Auth-related schema (users, password reset codes)
-scripts/run_sql_file.py  Runs a .sql file via pyodbc (used by CI to build a
+scripts/run_sql_file.py  Runs a .sql file via psycopg (used by CI to build a
                     fresh schema against the test database)
 tests/              pytest suite (scoring logic, auth/password hashing)
-.github/workflows/  CI — runs the test suite against a real SQL Server
+.github/workflows/  CI — runs the test suite against a real Postgres
                     service container on every push/PR
 ```
 
 ## Run it
 
-Requires Python 3, a Microsoft SQL Server instance, and Tesseract OCR
-installed locally (used for scanned-image resumes).
+Requires Python 3, a Postgres database (a free [Neon](https://neon.tech)
+project works well), and Tesseract OCR installed locally (used for
+scanned-image resumes).
 
 ```bash
 python -m venv venv
@@ -66,21 +67,19 @@ venv\Scripts\activate        # or source venv/bin/activate on macOS/Linux
 pip install -r requirements.txt      # or requirements-dev.txt to also get pytest
 ```
 
-Set up the database (SSMS or `sqlcmd`):
+Set up the database:
 
 ```bash
-sqlcmd -S localhost -i setup_db.sql
-sqlcmd -S localhost -i setup_users_table.sql
+python scripts/run_sql_file.py setup_db.sql setup_users_table.sql
 ```
 
 Copy `.env.example` to `.env` and fill in real values — at minimum a
 `SECRET_KEY` for anything beyond local dev (the app generates and persists
-a random one locally if you skip this, purely for convenience) and your DB
-connection details if they differ from the local-dev defaults in
-`config.py` (`SQL_SERVER`, `SQL_DATABASE`, `SQL_DRIVER`,
-`SQL_TRUSTED_CONNECTION`, or `SQL_USERNAME`/`SQL_PASSWORD`; `MAIL_SERVER`,
-`MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER` for password-reset
-emails).
+a random one locally if you skip this, purely for convenience) and
+`DATABASE_URL` (your Postgres connection string). `DB_SCHEMA` lets one
+Postgres database host separate schemas per environment — defaults to
+`resume_analyser_dev`. (`MAIL_SERVER`, `MAIL_USERNAME`, `MAIL_PASSWORD`,
+`MAIL_DEFAULT_SENDER` for password-reset emails.)
 
 ```bash
 python app.py
@@ -100,7 +99,7 @@ pytest -v
 `tests/test_analyzer.py` is pure unit tests (no DB needed). `tests/test_auth.py`
 is an integration suite against a real database — it needs the same DB setup
 as running the app itself. CI (`.github/workflows/tests.yml`) runs both
-against a disposable SQL Server container on every push/PR.
+against a disposable Postgres container on every push/PR.
 
 ## Routes
 
