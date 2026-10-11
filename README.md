@@ -1,9 +1,22 @@
 # Smart Resume Analyser
 
+[![Tests](https://github.com/DondieGatan/Smart-Resume-Analyser/actions/workflows/tests.yml/badge.svg)](https://github.com/DondieGatan/Smart-Resume-Analyser/actions/workflows/tests.yml)
+
 An AI-assisted resume scoring, feedback, and job-matching platform. Upload a
 resume as a PDF or a scanned image and get back a scored, section-by-section
 breakdown — skills, education, experience, and formatting — plus an
 ATS-compatibility check and concrete suggestions for improvement.
+
+[![Smart Resume Analyser](https://dondiegatan.github.io/dondiegatan-portfolio/assets/covers/resume-analyser.webp)](https://dondiegatan.github.io/dondiegatan-portfolio/projects.html#resume-analyser)
+
+**Live demo:** [smart-resume-analyser-z09z.onrender.com](https://smart-resume-analyser-z09z.onrender.com) ·
+[Demo video on my portfolio](https://dondiegatan.github.io/dondiegatan-portfolio/projects.html#resume-analyser)
+
+**Try it in a minute:** click *Sign up* and create a free account (there is no
+email-confirmation step, you are signed straight in), then upload any resume —
+a PDF, a Word file or a scanned image. The app runs on Render's free tier, so
+the first request after a quiet period can take up to a minute while the
+server wakes up.
 
 ## Features
 
@@ -17,8 +30,16 @@ ATS-compatibility check and concrete suggestions for improvement.
   given resume fits it
 - **Personalised feedback generation** based on career goal, experience
   level, and target role
-- **Guided resume builder** with multiple templates
-- **Auth system** with email-based password reset (Flask-Mail) and a
+- **Guided resume builder** with multiple templates, structured work-experience
+  and education entries, and one-click **native-text PDF export** (jsPDF draws
+  real, selectable text, not a rasterised image, so the output is
+  machine-readable by real ATS software)
+- **AI resume assistant** (Google Gemini) inside the builder: it reads the
+  current draft, points out gaps, and rewrites weak sections on request.
+  Rate-limited, and it degrades to a clear "not configured" message if no API
+  key is set
+- **Auth system** with email-based password reset (SendGrid's HTTP API, with an
+  SMTP/Flask-Mail fallback for local dev) and a
   per-user resume history — every resume, and the dashboard's aggregate
   stats, are scoped to the account that uploaded them
 - **Analytics dashboard** — score distribution, top skills, career-field
@@ -31,8 +52,9 @@ ATS-compatibility check and concrete suggestions for improvement.
 
 ## Stack
 
-Python · Flask · Postgres (`psycopg`) · NLTK · PyMuPDF · Tesseract OCR
-(`pytesseract`) · Flask-Mail · HTML/CSS/JS
+Python · Flask · Postgres (`psycopg`, hosted on Neon) · NLTK · PyMuPDF ·
+Tesseract OCR (`pytesseract`) · sentence-transformers · Google Gemini API ·
+SendGrid · jsPDF · Docker · GitHub Actions · HTML/CSS/JS
 
 ## Project layout
 
@@ -114,10 +136,21 @@ against a disposable Postgres container on every push/PR.
 | `/builder`, `/builder/<template>` | Guided resume builder |
 | `/history` | A user's past resume analyses |
 | `/dashboard`, `/api/dashboard-data` | Analytics dashboard |
+| `/api/resume-chat` (POST) | AI assistant for the builder (Gemini), rate-limited |
+| `/health` | Liveness check used for uptime monitoring |
 | `/export/csv` | CSV export of dashboard data |
 | `/uploads/<filename>` | Serves an uploaded resume file — only to its owner |
 | `/resume/<id>/delete` (POST) | Permanently delete one resume and its file |
 | `/account/delete` (POST) | Permanently delete the account and everything it owns |
+
+## Deployment
+
+The app ships as a container: the `Dockerfile` installs the Tesseract binary and
+runs the app with gunicorn. The live demo runs on Render's free tier against a
+Neon Postgres database (a separate schema per environment via `DB_SCHEMA`).
+Required environment variables: `DATABASE_URL`, `SECRET_KEY`, and optionally
+`GEMINI_API_KEY` (AI assistant) and `SENDGRID_API_KEY` / `SENDGRID_FROM`
+(password-reset email). See `.env.example`.
 
 ## Scaling this further
 
