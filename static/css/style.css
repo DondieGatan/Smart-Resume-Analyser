@@ -4384,3 +4384,128 @@ html:not([data-theme="dark"]) .sidebar-user-email { color: rgba(224, 224, 224, 0
 }
 
 .ai-chat-header { background: var(--brand); color: var(--on-brand); }
+
+/* =============================================
+   Contrast fix: the sign-in pages were styled for a dark card, so their text was hard-coded white
+   and vanished on the light glass. Everything now follows the theme text colours.
+   ============================================= */
+
+.auth-header h2, .auth-header h1 { color: var(--text); }
+.auth-header p { color: var(--text-soft); }
+.auth-back { color: var(--text-soft); }
+.auth-back:hover { color: var(--text); }
+.auth-switch { color: var(--text-soft); }
+.auth-switch .auth-link, .auth-link, .auth-options .auth-link, .auth-link-white { color: var(--text); }
+.auth-footer { color: var(--text-soft); border-top-color: var(--line); }
+.auth-input-wrap svg { color: var(--text-soft); }
+.auth-input-wrap input { color: var(--text); }
+.auth-input-wrap input::placeholder { color: var(--text-soft); opacity: 0.75; }
+
+/* browser autofill: keep the glass, never a solid dark fill */
+.auth-input-wrap input:-webkit-autofill,
+.auth-input-wrap input:-webkit-autofill:hover,
+.auth-input-wrap input:-webkit-autofill:focus,
+.auth-input-wrap input:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--text);
+    -webkit-box-shadow: 0 0 0 1000px transparent inset;
+    box-shadow: 0 0 0 1000px transparent inset;
+    transition: background-color 9999s ease-in-out 0s;
+    caret-color: var(--text);
+    border-radius: 999px;
+}
+
+input:-webkit-autofill, textarea:-webkit-autofill, select:-webkit-autofill {
+    -webkit-text-fill-color: var(--text);
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+/* =============================================
+   Contrast pass 2: readable text on glass in light and dark
+   ============================================= */
+
+/* light mode: darker greys for secondary text, labels and the footer */
+html:not([data-theme="dark"]) {
+    --text-soft: #3e4347;
+    --gray-500: #454b4f;
+    --gray-400: #5d6266;
+}
+
+html:not([data-theme="dark"]) .footer { color: var(--text-soft); border-top-color: var(--line); }
+html:not([data-theme="dark"]) .detail-label,
+html:not([data-theme="dark"]) .score-gauge-label { color: #454b4f; }
+
+/* the sidebar is a dark pane in both themes, so its text stays light and solid enough */
+html:not([data-theme="dark"]) .sidebar { background: linear-gradient(180deg, rgba(40, 44, 47, 0.9), rgba(24, 24, 24, 0.94)); }
+.sidebar-link-text, .sidebar-link { color: #e6e6e6; }
+.sidebar-link:hover, .sidebar-link.active { color: #ffffff; }
+.sidebar-danger-link, .sidebar-danger-link .sidebar-link-text { color: #fca5a5; }
+.sidebar-danger-link:hover { background: rgba(239, 68, 68, 0.16); color: #fecaca; }
+
+/* score badges: dark text on pale tints in light, bright text on dark glass in dark */
+html:not([data-theme="dark"]) .score-badge.excellent { color: #14532d; background: rgba(34, 197, 94, 0.22); }
+html:not([data-theme="dark"]) .score-badge.good { color: #713f12; background: rgba(234, 179, 8, 0.26); }
+html:not([data-theme="dark"]) .score-badge.average { color: #7c2d12; background: rgba(249, 115, 22, 0.22); }
+html:not([data-theme="dark"]) .score-badge.poor { color: #7f1d1d; background: rgba(239, 68, 68, 0.2); }
+[data-theme="dark"] .score-badge.excellent { color: #86efac; }
+[data-theme="dark"] .score-badge.good { color: #fde047; }
+[data-theme="dark"] .score-badge.average { color: #fdba74; }
+[data-theme="dark"] .score-badge.poor { color: #fca5a5; }
+
+/* result sections */
+html:not([data-theme="dark"]) .section-success, html:not([data-theme="dark"]) .ats-section-item.found { color: #14532d; }
+html:not([data-theme="dark"]) .section-warning { color: #7c2d12; }
+html:not([data-theme="dark"]) .ats-section-item.missing { color: #991b1b; }
+[data-theme="dark"] .section-success, [data-theme="dark"] .ats-section-item.found { color: #86efac; }
+[data-theme="dark"] .section-warning { color: #fcd34d; }
+[data-theme="dark"] .ats-section-item.missing { color: #fca5a5; }
+
+/* solid colour buttons and badges: darker fills so their white text reads */
+.btn-success, .btn.btn-success { background: linear-gradient(145deg, #15803d, #166534); color: #fff; border: 1px solid rgba(255, 255, 255, 0.4); }
+.btn-view { background: linear-gradient(145deg, #353a3e, #1a1a1a); color: #f4f4f4; border: 1px solid rgba(255, 255, 255, 0.35); }
+.insight-icon { color: #fff; }
+.insight-icon.info { background: #353a3e; }
+.insight-icon.success { background: #15803d; }
+.insight-icon.warn { background: #b45309; }
+.insight-icon.danger { background: #b91c1c; }
+
+/* the builder's green "Export as PDF" button and the hint under the live preview */
+#export-pdf-btn, .btn-export { background: linear-gradient(145deg, #15803d, #166534); color: #fff; }
+html:not([data-theme="dark"]) .preview-empty, html:not([data-theme="dark"]) .preview-placeholder { color: #454b4f; }
+
+/* leftovers found by the contrast audit */
+.mini-tag.more { background: var(--brand); color: var(--on-brand); border: 1px solid rgba(255, 255, 255, 0.4); }
+.recommendation-item .icon { background: var(--brand); color: var(--on-brand); border: 1px solid rgba(255, 255, 255, 0.45); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+html:not([data-theme="dark"]) .sidebar { background: linear-gradient(180deg, rgba(40, 44, 47, 0.96), rgba(22, 22, 22, 0.97)); }
+
+/* the Power BI banner and the old navbar were still indigo */
+.powerbi-section, [data-theme="dark"] .navbar, .navbar {
+    background: linear-gradient(145deg, rgba(53, 58, 62, 0.92), rgba(26, 26, 26, 0.95));
+    border: 1px solid rgba(224, 224, 224, 0.2);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 24px 44px -26px rgba(0, 0, 0, 0.7);
+    color: #f4f4f4;
+}
+
+.powerbi-section .btn-secondary { color: #f4f4f4; border-color: rgba(244, 244, 244, 0.7); }
+.powerbi-section h3 { color: #fff; }
+
+/* sidebar details: a bright Platinum pill with dark text for the current page, and dark glass controls */
+.sidebar-link.active, html:not([data-theme="dark"]) .sidebar-link.active {
+    background: linear-gradient(145deg, #f4f4f4, #cfcfcf);
+    border-color: rgba(255, 255, 255, 0.9);
+    box-shadow: inset 0 1px 0 #fff, 0 12px 24px -12px rgba(0, 0, 0, 0.7);
+    color: #1a1a1a;
+}
+
+.sidebar-link.active .sidebar-link-text { color: #1a1a1a; font-weight: 700; }
+.sidebar-link.active svg { background: #1a1a1a; border-color: #1a1a1a; color: #f4f4f4; box-shadow: none; }
+
+.sidebar-theme-toggle, .sidebar-logout {
+    background: rgba(224, 224, 224, 0.08);
+    border: 1px solid rgba(224, 224, 224, 0.26);
+    color: #f0f0f0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.sidebar-theme-toggle:hover, .sidebar-logout:hover { background: rgba(224, 224, 224, 0.16); }
+.sidebar-user-email { color: rgba(224, 224, 224, 0.82); }
+.sidebar-user-name { color: #ffffff; }
