@@ -59,7 +59,7 @@ def test_inputs_are_length_capped():
 
 def test_unknown_tone_falls_back_to_professional():
     system, _, _ = build_prompt('cover_letter', RESUME, job_description=JD, tone='aggressive')
-    assert ai_tools.TONES['professional'] in system
+    assert ai_tools.TONES['professional']['style'] in system
 
 
 def test_interview_prep_uses_the_job_description_when_given():
@@ -123,3 +123,11 @@ def test_an_empty_answer_is_a_friendly_error(monkeypatch):
     monkeypatch.setattr(ai_tools.requests, 'post', lambda *a, **k: _Resp({'candidates': []}))
     with pytest.raises(ToolError):
         ai_tools.call_gemini('sys', 'user')
+
+
+def test_each_tone_changes_the_prompt_and_concise_is_shorter():
+    prompts = {t: build_prompt('cover_letter', RESUME, job_description=JD, tone=t)[0] for t in ai_tools.TONES}
+    assert len(set(prompts.values())) == 3
+    assert '150 to 200' in prompts['concise'] and '250 to 330' in prompts['professional']
+    about = {t: build_prompt('linkedin', RESUME, tone=t)[0] for t in ai_tools.TONES}
+    assert '60 to 90' in about['concise'] and '120 to 170' in about['warm']

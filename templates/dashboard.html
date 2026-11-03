@@ -246,7 +246,7 @@
 // ===== Theme =====
 function getThemeColors() {
     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    return { isDark: isDark, text: isDark ? '#e2e8f0' : '#1e293b', grid: isDark ? '#334155' : '#e2e8f0', bg: isDark ? '#1e293b' : '#ffffff' };
+    return { isDark: isDark, text: isDark ? '#e2e8f0' : '#1e293b', grid: isDark ? '#3a3f43' : '#cfcfcf', bg: isDark ? '#222526' : '#ffffff' };
 }
 var theme = getThemeColors();
 Chart.defaults.color = theme.text;
@@ -395,7 +395,7 @@ function renderDashboard(filterField) {
             { label: 'Education', value: st.avgEdu }
         ];
         ringsContainer.innerHTML = ringData.map(function(r) {
-            return '<div class="ring-gauge">' + ringGaugeSVG(r.value, '#3b82f6') +
+            return '<div class="ring-gauge">' + ringGaugeSVG(r.value, theme.isDark ? '#e0e0e0' : '#353a3e') +
                 '<div class="ring-value">' + r.value + '</div><div class="ring-label">' + r.label + '</div></div>';
         }).join('');
     }
