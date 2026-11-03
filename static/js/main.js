@@ -163,3 +163,78 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+
+
+// =============================================
+// Motion: loading bar, button ripples, count-up numbers (all skipped for reduced motion)
+// =============================================
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // Thin gradient bar across the top while the next page loads
+    var bar = document.createElement('div');
+    bar.className = 'route-bar';
+    bar.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(bar);
+
+    function startBar() {
+        bar.classList.remove('running');
+        void bar.offsetWidth;
+        bar.classList.add('running');
+    }
+
+    document.addEventListener('click', function (e) {
+        var link = e.target.closest && e.target.closest('a[href]');
+        if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (link.target && link.target !== '_self') return;
+        if (link.hasAttribute('download')) return;
+        var url;
+        try { url = new URL(link.href, window.location.href); } catch (err) { return; }
+        if (url.origin !== window.location.origin) return;
+        if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+        startBar();
+    });
+
+    document.addEventListener('submit', function (e) {
+        if (!e.defaultPrevented) startBar();
+    });
+
+    // Back/forward cache restores a page with the bar still running
+    window.addEventListener('pageshow', function () { bar.classList.remove('running'); });
+
+    // Soft ripple where a button is pressed
+    document.addEventListener('pointerdown', function (e) {
+        var btn = e.target.closest && e.target.closest('.btn, .auth-btn');
+        if (!btn || btn.disabled) return;
+        var rect = btn.getBoundingClientRect();
+        var size = Math.max(rect.width, rect.height);
+        var dot = document.createElement('span');
+        dot.className = 'ripple-dot';
+        dot.style.width = dot.style.height = size + 'px';
+        dot.style.left = (e.clientX - rect.left - size / 2) + 'px';
+        dot.style.top = (e.clientY - rect.top - size / 2) + 'px';
+        btn.appendChild(dot);
+        setTimeout(function () { dot.remove(); }, 650);
+    });
+
+    // Dashboard numbers count up from zero
+    document.querySelectorAll('.stat-value').forEach(function (el, i) {
+        var text = el.textContent.trim();
+        if (!/^\d+(\.\d+)?$/.test(text)) return;
+        var target = parseFloat(text);
+        var decimals = (text.split('.')[1] || '').length;
+        var start = null;
+        var duration = 1100;
+        el.textContent = (0).toFixed(decimals);
+        function step(ts) {
+            if (start === null) start = ts + i * 90;
+            var t = Math.min(Math.max((ts - start) / duration, 0), 1);
+            var eased = 1 - Math.pow(1 - t, 3);
+            el.textContent = (target * eased).toFixed(decimals);
+            if (t < 1) requestAnimationFrame(step);
+            else el.textContent = text;
+        }
+        requestAnimationFrame(step);
+    });
+});
