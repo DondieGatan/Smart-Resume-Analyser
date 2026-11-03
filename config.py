@@ -92,4 +92,5 @@ class Config:
     # doesn't break local dev, which runs over plain http://localhost.
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    SESSION_COOKIE_SECURE = bool(os.environ.get('RENDER'))
+    # Hugging Face Spaces sets SPACE_ID the same way, so the cookie is also Secure there.
+    SESSION_COOKIE_SECURE = bool(os.environ.get('RENDER') or os.environ.get('SPACE_ID'))
