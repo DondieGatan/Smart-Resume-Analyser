@@ -27,28 +27,28 @@
 <!-- Stats Cards -->
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="stat-icon" style="background:rgba(79,70,229,0.12);color:var(--primary);">
+        <div class="stat-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
         </div>
         <div class="stat-value">{{ data.total_resumes }}</div>
         <div class="stat-label">Total Resumes</div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon" style="background:rgba(14,165,233,0.12);color:var(--secondary);">
+        <div class="stat-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
         </div>
         <div class="stat-value">{{ data.avg_score }}</div>
         <div class="stat-label">Average Score</div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon" style="background:rgba(34,197,94,0.12);color:var(--success);">
+        <div class="stat-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
         </div>
         <div class="stat-value">{{ data.top_skills|length }}</div>
         <div class="stat-label">Unique Skills</div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon" style="background:rgba(139,92,246,0.12);color:#8b5cf6;">
+        <div class="stat-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
         </div>
         <div class="stat-value">{{ data.field_distribution|length }}</div>
@@ -60,7 +60,7 @@
 <div class="chart-grid">
     <div class="chart-card">
         <h3>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#8b5cf6" viewBox="0 0 16 16" style="vertical-align:-3px;margin-right:6px;"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8 13A5 5 0 1 0 8 3a5 5 0 0 0 0 10z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:-3px;margin-right:6px;"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8 13A5 5 0 1 0 8 3a5 5 0 0 0 0 10z"/></svg>
             Score Distribution
         </h3>
         <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
@@ -87,7 +87,7 @@
 <div class="chart-grid">
     <div class="chart-card">
         <h3>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#8b5cf6" viewBox="0 0 16 16" style="vertical-align:-3px;margin-right:6px;"><path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:-3px;margin-right:6px;"><path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828z"/></svg>
             Career Fields Distribution
         </h3>
         {% if data.field_distribution %}
@@ -120,7 +120,7 @@
 
     <div class="chart-card">
         <h3>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#14b8a6" viewBox="0 0 16 16" style="vertical-align:-3px;margin-right:6px;"><path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13a.5.5 0 0 1 0 1 .5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1 .5.5 0 0 1 0-1 .5.5 0 0 1-.46-.302l-.761-1.77a1.964 1.964 0 0 0-.453-.618A5.984 5.984 0 0 1 2 6z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style="vertical-align:-3px;margin-right:6px;"><path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13a.5.5 0 0 1 0 1 .5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1 .5.5 0 0 1 0-1 .5.5 0 0 1-.46-.302l-.761-1.77a1.964 1.964 0 0 0-.453-.618A5.984 5.984 0 0 1 2 6z"/></svg>
             What Improves Scores Most
         </h3>
         <div class="bar-chart" id="actionBars"></div>
