@@ -12,6 +12,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from config import Config
+import ai_tools
 from analyzer import (analyse_resume, IMAGE_EXTENSIONS, generate_personalized_feedback,
                       match_job_description, RESUME_TEMPLATES, SKILLS_DB, highlight_matches)
 from models import (save_resume, save_skills, save_education, save_experience,
@@ -777,6 +778,74 @@ def api_resume_chat():
         return jsonify({'error': 'The AI assistant is temporarily unavailable. Please try again shortly.'}), 502
     except Exception:
         app.logger.exception('Resume chat: unexpected error')
+        return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+
+
+# --------------------------------------------------------------------------
+# AI tools (cover letter, bullet improver, job tailoring, interview prep, LinkedIn)
+# --------------------------------------------------------------------------
+
+AI_TOOL_NAMES = ('cover_letter', 'bullets', 'tailor', 'interview', 'linkedin')
+
+
+def _per_user_key():
+    """Rate-limit AI calls per signed-in user, not per IP (people share networks)."""
+    return 'user-%s' % session.get('user_id', get_remote_address())
+
+
+@app.route('/ai-tools')
+@login_required
+def ai_tools_page():
+    """Page with the AI writing tools. ?resume=<id>&tool=<name> pre-selects a resume and a tool."""
+    resumes = get_all_resumes(session['user_id'])
+    wanted = request.args.get('resume', type=int)
+    selected = wanted if any(r['id'] == wanted for r in resumes) else (resumes[0]['id'] if resumes else None)
+    tool = request.args.get('tool') if request.args.get('tool') in AI_TOOL_NAMES else 'cover_letter'
+    return render_template('ai_tools.html', resumes=resumes, selected_resume=selected,
+                           initial_tool=tool, ai_enabled=bool(Config.GEMINI_API_KEY))
+
+
+@app.route('/api/ai-tools/<tool>', methods=['POST'])
+@login_required
+@limiter.limit('15 per hour', key_func=_per_user_key)
+@limiter.limit('4 per minute', key_func=_per_user_key)
+def api_ai_tool(tool):
+    """Run one AI tool. The resume text is read from the database for the signed-in user (a resume id from
+    another account behaves like one that does not exist), never taken from the request."""
+    if tool not in AI_TOOL_NAMES:
+        return jsonify({'error': 'Unknown tool.'}), 404
+    if not Config.GEMINI_API_KEY:
+        return jsonify({'error': 'The AI tools are not configured on this server yet.'}), 503
+
+    data = request.get_json(silent=True) or {}
+    resume_text = ''
+    resume_id = data.get('resume_id')
+    if resume_id not in (None, ''):
+        try:
+            resume = get_resume_by_id(int(resume_id), session['user_id'])
+        except (TypeError, ValueError):
+            resume = None
+        if not resume:
+            return jsonify({'error': 'That resume was not found.'}), 404
+        resume_text = resume.get('raw_text') or ''
+
+    try:
+        reply = ai_tools.run_tool(
+            tool,
+            resume_text=resume_text,
+            job_description=str(data.get('job_description') or ''),
+            bullets=str(data.get('bullets') or ''),
+            tone=str(data.get('tone') or 'professional'),
+            extra=str(data.get('extra') or ''),
+        )
+        return jsonify({'reply': reply})
+    except ai_tools.ToolError as e:
+        return jsonify({'error': str(e)}), 400
+    except requests.exceptions.RequestException:
+        app.logger.exception('AI tool %s: Gemini request failed', tool)
+        return jsonify({'error': 'The AI is busy or unavailable right now. Please try again in a minute.'}), 502
+    except Exception:
+        app.logger.exception('AI tool %s: unexpected error', tool)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
 
 

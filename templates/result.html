@@ -346,6 +346,7 @@
 <div class="action-buttons">
     <a href="{{ url_for('personalize', resume_id=resume.id) }}" class="btn btn-primary">Get Personalized Feedback</a>
     <a href="{{ url_for('job_match', resume_id=resume.id) }}" class="btn btn-secondary">Match Against Job Description</a>
+    <a href="{{ url_for('ai_tools_page', resume=resume.id, tool='cover_letter') }}" class="btn btn-secondary">AI Tools</a>
     <button id="export-result-btn" class="btn btn-secondary" onclick="exportResultPDF()" type="button">Export as PDF</button>
     <a href="{{ url_for('index') }}" class="btn btn-secondary">Analyse Another Resume</a>
     <a href="{{ url_for('history') }}" class="btn btn-secondary">View History</a>
