@@ -187,11 +187,11 @@ function clearSearch() {
 }
 #history-clear-btn:hover { color: var(--danger); }
 [data-theme="dark"] .history-search-wrap {
-    background: #0f172a;
-    border-color: #334155;
+    background: rgba(224, 224, 224, 0.06);
+    border-color: rgba(224, 224, 224, 0.22);
 }
-[data-theme="dark"] .history-search-wrap input { color: #e2e8f0; }
-[data-theme="dark"] .history-search-wrap:focus-within { border-color: var(--primary); }
+[data-theme="dark"] .history-search-wrap input { color: #e0e0e0; }
+[data-theme="dark"] .history-search-wrap:focus-within { border-color: #e0e0e0; }
 @media (max-width: 480px) {
     .history-search-wrap {
         min-width: 0;
@@ -289,12 +289,12 @@ function clearSearch() {
 }
 
 [data-theme="dark"] .history-card {
-    background: #16181c;
-    border-color: #2a2d32;
+    background: rgba(53, 58, 62, 0.42);
+    border-color: rgba(224, 224, 224, 0.16);
 }
 
 [data-theme="dark"] .history-card-actions {
-    border-top-color: #2a2d32;
+    border-top-color: rgba(224, 224, 224, 0.16);
 }
 </style>
 {% endblock %}

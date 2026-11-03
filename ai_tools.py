@@ -20,9 +20,25 @@ MAX_BULLETS_CHARS = 3000
 MAX_EXTRA_CHARS = 200
 
 TONES = {
-    'professional': 'professional and confident',
-    'warm': 'warm, personable and enthusiastic while still professional',
-    'concise': 'brief and direct, no filler',
+    'professional': {
+        'style': 'professional: formal, polished and measured. Full sentences, no slang, no exclamation '
+                 'marks, confident but reserved.',
+        'letter_words': '250 to 330',
+        'about_words': '120 to 170',
+    },
+    'warm': {
+        'style': 'warm: friendly, personable and enthusiastic, as if written by a real person who is excited '
+                 'about this role. Conversational but still professional; contractions are fine, and show '
+                 'genuine interest in the company and the people it helps.',
+        'letter_words': '250 to 330',
+        'about_words': '120 to 170',
+    },
+    'concise': {
+        'style': 'concise: short and direct. Short sentences, no filler, no pleasantries, and every sentence '
+                 'must carry a concrete fact or result.',
+        'letter_words': '150 to 200',
+        'about_words': '60 to 90',
+    },
 }
 
 _SHARED_RULES = (
@@ -61,16 +77,17 @@ def build_prompt(tool, resume_text, job_description='', bullets='', tone='profes
     job_description = _clip(job_description, MAX_JD_CHARS)
     bullets = _clip(bullets, MAX_BULLETS_CHARS)
     extra = _clip(extra, MAX_EXTRA_CHARS)
-    tone_text = TONES.get(tone, TONES['professional'])
+    tone_cfg = TONES.get(tone, TONES['professional'])
 
     if tool == 'cover_letter':
         _require(resume_text, 'Choose one of your analysed resumes first.')
         _require(job_description, 'Paste the job description so the letter can be written for that role.')
         system = (
-            'You write tailored cover letters. Write one letter of about 250 to 330 words with a greeting, '
-            'an opening that names the role, two short body paragraphs that connect the candidate\'s real '
-            'experience and skills to what the job asks for, and a confident closing with a call to action. '
-            f'Tone: {tone_text}. Do not repeat the resume line by line. ' + _SHARED_RULES
+            'You write tailored cover letters. Write one letter of about ' + tone_cfg['letter_words']
+            + ' words with a greeting, an opening that names the role, short body paragraphs that connect '
+            'the candidate\'s real experience and skills to what the job asks for, and a closing with a '
+            'call to action. Tone: ' + tone_cfg['style'] + ' Do not repeat the resume line by line. '
+            + _SHARED_RULES
         )
         user = (f'Company or hiring manager (optional): {extra or "not given"}\n\n'
                 + _fence('resume', resume_text) + '\n\n' + _fence('job_description', job_description))
@@ -101,7 +118,9 @@ def build_prompt(tool, resume_text, job_description='', bullets='', tone='profes
             '"Keywords to add:" (the job\'s important skills or terms that the resume lacks, as a short list), '
             '"Strengths to highlight:" (3 items), "Changes to make:" (5 specific, numbered edits to the '
             'resume), and "Rewritten summary:" (a 3 sentence professional summary aimed at this job, using '
-            'only true facts from the resume). ' + _SHARED_RULES
+            'only true facts from the resume). Be a realistic critic, not a flatterer: only call a keyword '
+            'covered if the resume really shows it, and keep the match estimate honest. Do not suggest '
+            'adding a References section or a photo. ' + _SHARED_RULES
         )
         user = _fence('resume', resume_text) + '\n\n' + _fence('job_description', job_description)
         return system, user, 1800
@@ -124,9 +143,9 @@ def build_prompt(tool, resume_text, job_description='', bullets='', tone='profes
         _require(resume_text, 'Choose one of your analysed resumes first.')
         system = (
             'You write LinkedIn profiles. Produce, in labelled parts: "Headline options:" (3 headlines under '
-            '220 characters), "About section:" (a first-person summary of 120 to 170 words in short '
-            'paragraphs, ending with what the person is looking for), and "Skills to list:" (10 skills as a '
-            'comma-separated line). ' + f'Tone: {tone_text}. ' + _SHARED_RULES
+            '220 characters), "About section:" (a first-person summary of ' + tone_cfg['about_words']
+            + ' words in short paragraphs, ending with what the person is looking for), and "Skills to '
+            'list:" (10 skills as a comma-separated line). Tone: ' + tone_cfg['style'] + ' ' + _SHARED_RULES
         )
         user = _fence('resume', resume_text)
         if extra:

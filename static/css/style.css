@@ -4625,3 +4625,27 @@ html:not([data-theme="dark"]) .sidebar { background: linear-gradient(180deg, rgb
 
 @media (max-width: 1100px) { .ai-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ai-layout { grid-template-columns: 1fr; } .ai-result { position: static; } }
 @media (max-width: 640px) { .ai-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ai-tab-text small { display: none; } .ai-row { grid-template-columns: 1fr; } }
+
+/* =============================================
+   Native controls follow the theme. Dropdown lists (and scrollbars, date pickers) are drawn by the
+   browser, so they need an explicit colour scheme and option colours; otherwise they fall back to a
+   white list with pale text that cannot be read.
+   ============================================= */
+
+html[data-theme="dark"] { color-scheme: dark; }
+html:not([data-theme="dark"]) { color-scheme: light; }
+
+select option, select optgroup { background-color: #f4f4f4; color: #1a1a1a; }
+[data-theme="dark"] select option, [data-theme="dark"] select optgroup { background-color: #26292c; color: #f0f0f0; }
+select option:checked, select option:hover { background-color: #353a3e; color: #ffffff; }
+[data-theme="dark"] select option:checked, [data-theme="dark"] select option:hover { background-color: #e0e0e0; color: #1a1a1a; }
+select option:disabled { color: #6b7075; }
+
+/* tone helper under the AI Tools tone dropdown */
+.ai-tone-help { margin: 0.45rem 0 1.1rem; font-size: 0.78rem; line-height: 1.5; color: var(--text-soft); }
+.ai-tone-help strong { color: var(--text); }
+
+/* the builder chat panel's header is a light pill in dark mode, so its close button must be dark there */
+.ai-chat-close { color: var(--on-brand); }
+.ai-chat-close:hover { background: rgba(0, 0, 0, 0.12); }
+.ai-chat-header, .ai-chat-header * { color: var(--on-brand); }

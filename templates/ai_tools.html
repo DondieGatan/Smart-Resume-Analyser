@@ -64,6 +64,8 @@
                 </div>
             </div>
 
+            <p class="ai-tone-help" id="ai-tone-help" hidden></p>
+
             <div class="ai-actions">
                 <button type="submit" class="btn btn-primary" id="ai-go" {{ '' if ai_enabled else 'disabled' }}>
                     <span id="ai-go-label">Generate</span>
@@ -101,7 +103,7 @@
 (function () {
     var TOOLS = {
         cover_letter: { label: 'Cover Letter', go: 'Write cover letter', desc: 'A tailored letter that connects your real experience to a specific job.',
-            resume: true, jd: 'required', bullets: false, tone: true, extra: 'Company or hiring manager (optional)', extraPh: 'e.g. Careem, Hiring Manager',
+            resume: true, jd: 'required', bullets: false, tone: true, extra: 'Company or hiring manager (optional)', extraPh: 'e.g. Careem',
             icon: '<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>' },
         bullets: { label: 'Bullet Improver', go: 'Improve bullets', desc: 'Rewrite weak resume bullets with strong verbs and clear impact.',
             resume: false, jd: 'none', bullets: true, tone: false, extra: 'Target role (optional)', extraPh: 'e.g. Junior Full-Stack Developer',
@@ -117,6 +119,11 @@
             icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 11v5M8.5 8.2v.1M12 16v-5M12 13c0-1.4 1-2 2-2s2 .7 2 2v3"/>' }
     };
     var ORDER = ['cover_letter', 'bullets', 'tailor', 'interview', 'linkedin'];
+    var TONE_HELP = {
+        professional: '<strong>Professional</strong>: formal and polished, full sentences, no slang. The safe choice for most employers, banks, law, government and large companies.',
+        warm: '<strong>Warm</strong>: friendly and enthusiastic, reads like a real person who is excited about the role. Good for startups, creative, teaching, healthcare and people-focused jobs.',
+        concise: '<strong>Concise</strong>: short and direct with no filler, and about a third shorter (a cover letter of 150 to 200 words instead of 250 to 330). Good for busy recruiters and senior roles.'
+    };
     var current = {{ initial_tool|tojson }};
     var lastText = '';
 
@@ -155,6 +162,7 @@
         $('ai-jd-req').textContent = t.jd === 'required' ? '(required)' : (t.jd === 'optional' ? '(optional, makes the questions specific)' : '');
         $('f-bullets').style.display = t.bullets ? '' : 'none';
         $('f-tone').style.display = t.tone ? '' : 'none';
+        showToneHelp();
         $('f-extra').style.display = t.extra ? '' : 'none';
         if (t.extra) { $('ai-extra-label').textContent = t.extra; $('ai-extra').placeholder = t.extraPh || ''; }
         $('ai-extra').value = '';
@@ -162,6 +170,14 @@
     }
 
     function resumeSelect() { return $('ai-resume'); }
+
+    function showToneHelp() {
+        var help = $('ai-tone-help');
+        var on = !!TOOLS[current].tone;
+        help.hidden = !on;
+        if (on) help.innerHTML = TONE_HELP[$('ai-tone').value] || '';
+    }
+    $('ai-tone').addEventListener('change', showToneHelp);
 
     function reset() {
         show('ai-empty', false); show('ai-loading', false); show('ai-error', false);
