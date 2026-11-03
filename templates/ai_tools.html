@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% set body_bg = true %}
+{% block title %}AI Tools - Smart Resume Analyser{% endblock %}
+
+{% block content %}
+<div class="ai-page">
+    <header class="ai-hero">
+        <span class="ai-eyebrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
+            Powered by Gemini
+        </span>
+        <h1>AI Tools</h1>
+        <p>Turn your analysed resume into the things a job search needs: a tailored cover letter, sharper bullet points, a job-match plan, interview practice and a LinkedIn profile.</p>
+    </header>
+
+    {% if not ai_enabled %}
+    <div class="card ai-note" role="status">The AI tools are not switched on for this server yet (no API key is configured).</div>
+    {% endif %}
+
+    <section class="ai-tabs" role="tablist" aria-label="AI tools" id="ai-tabs"></section>
+
+    <div class="ai-layout">
+        <form class="card ai-form" id="ai-form" autocomplete="off">
+            <div class="ai-form-head">
+                <h2 id="ai-tool-title">Cover Letter</h2>
+                <p id="ai-tool-desc"></p>
+            </div>
+
+            <div class="ai-field" id="f-resume">
+                <label for="ai-resume">Resume</label>
+                {% if resumes %}
+                <select id="ai-resume">
+                    {% for r in resumes %}
+                    <option value="{{ r.id }}" {{ 'selected' if r.id == selected_resume else '' }}>{{ r.candidate_name or 'Unnamed' }} &middot; {{ r.upload_date.strftime('%b %d, %Y') if r.upload_date else '' }}{% if r.overall_score is not none %} &middot; score {{ r.overall_score }}{% endif %}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                <p class="ai-hint">You have no analysed resumes yet. <a href="{{ url_for('index') }}">Upload one</a> and it will appear here.</p>
+                {% endif %}
+            </div>
+
+            <div class="ai-field" id="f-jd">
+                <label for="ai-jd"><span id="ai-jd-label">Job description</span> <em id="ai-jd-req"></em></label>
+                <textarea id="ai-jd" rows="7" maxlength="5000" placeholder="Paste the job posting here..."></textarea>
+            </div>
+
+            <div class="ai-field" id="f-bullets">
+                <label for="ai-bullets">Bullet points to improve</label>
+                <textarea id="ai-bullets" rows="7" maxlength="3000" placeholder="- Worked on the company website&#10;- Helped customers with problems"></textarea>
+            </div>
+
+            <div class="ai-row">
+                <div class="ai-field" id="f-extra">
+                    <label for="ai-extra" id="ai-extra-label">Company</label>
+                    <input type="text" id="ai-extra" maxlength="200" placeholder="">
+                </div>
+                <div class="ai-field" id="f-tone">
+                    <label for="ai-tone">Tone</label>
+                    <select id="ai-tone">
+                        <option value="professional">Professional</option>
+                        <option value="warm">Warm</option>
+                        <option value="concise">Concise</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="ai-actions">
+                <button type="submit" class="btn btn-primary" id="ai-go" {{ '' if ai_enabled else 'disabled' }}>
+                    <span id="ai-go-label">Generate</span>
+                </button>
+                <span class="ai-limit">Up to 15 requests an hour per account. Nothing you paste here is stored.</span>
+            </div>
+        </form>
+
+        <section class="card ai-result" id="ai-result" aria-live="polite">
+            <div class="ai-result-head">
+                <h2>Result</h2>
+                <div class="ai-result-actions" id="ai-result-actions" hidden>
+                    <button type="button" class="btn btn-secondary btn-sm" id="ai-copy">Copy</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="ai-download">Download .txt</button>
+                </div>
+            </div>
+            <div class="ai-empty" id="ai-empty">
+                <div class="ai-empty-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
+                </div>
+                <p>Pick a tool, fill in the details and press <strong>Generate</strong>. Your result appears here.</p>
+            </div>
+            <div class="ai-loading" id="ai-loading" hidden>
+                <span class="ai-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <p>Writing with Gemini&hellip; this takes about 10 seconds.</p>
+            </div>
+            <div class="ai-error" id="ai-error" role="alert" hidden></div>
+            <pre class="ai-output" id="ai-output" hidden></pre>
+            <p class="ai-disclaimer" id="ai-disclaimer" hidden>AI can make mistakes. Check every fact against your real experience and replace any [placeholder] before you use it.</p>
+        </section>
+    </div>
+</div>
+
+<script>
+(function () {
+    var TOOLS = {
+        cover_letter: { label: 'Cover Letter', go: 'Write cover letter', desc: 'A tailored letter that connects your real experience to a specific job.',
+            resume: true, jd: 'required', bullets: false, tone: true, extra: 'Company or hiring manager (optional)', extraPh: 'e.g. Careem, Hiring Manager',
+            icon: '<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>' },
+        bullets: { label: 'Bullet Improver', go: 'Improve bullets', desc: 'Rewrite weak resume bullets with strong verbs and clear impact.',
+            resume: false, jd: 'none', bullets: true, tone: false, extra: 'Target role (optional)', extraPh: 'e.g. Junior Full-Stack Developer',
+            icon: '<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M13.5 6.5l3 3"/>' },
+        tailor: { label: 'Tailor to a Job', go: 'Compare with the job', desc: 'See the keywords you are missing and exactly what to change for one job.',
+            resume: true, jd: 'required', bullets: false, tone: false, extra: null,
+            icon: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8"/>' },
+        interview: { label: 'Interview Prep', go: 'Create questions', desc: 'Likely questions for you, with coaching on how to answer from your own resume.',
+            resume: true, jd: 'optional', bullets: false, tone: false, extra: null,
+            icon: '<path d="M5 5h14v10H11l-4 4v-4H5z"/><path d="M9 9h6M9 12h4"/>' },
+        linkedin: { label: 'LinkedIn Profile', go: 'Write my profile', desc: 'Headline options, an About section and the skills to list.',
+            resume: true, jd: 'none', bullets: false, tone: true, extra: 'Target role or industry (optional)', extraPh: 'e.g. fintech, data analyst',
+            icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 11v5M8.5 8.2v.1M12 16v-5M12 13c0-1.4 1-2 2-2s2 .7 2 2v3"/>' }
+    };
+    var ORDER = ['cover_letter', 'bullets', 'tailor', 'interview', 'linkedin'];
+    var current = {{ initial_tool|tojson }};
+    var lastText = '';
+
+    var $ = function (id) { return document.getElementById(id); };
+    var tabs = $('ai-tabs');
+
+    ORDER.forEach(function (key) {
+        var t = TOOLS[key];
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ai-tab';
+        b.setAttribute('role', 'tab');
+        b.dataset.tool = key;
+        b.innerHTML = '<span class="ai-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg></span><span class="ai-tab-text"><strong></strong><small></small></span>';
+        b.querySelector('strong').textContent = t.label;
+        b.querySelector('small').textContent = t.desc;
+        b.addEventListener('click', function () { select(key); });
+        tabs.appendChild(b);
+    });
+
+    function show(id, on) { $(id).hidden = !on; }
+
+    function select(key) {
+        current = key;
+        var t = TOOLS[key];
+        tabs.querySelectorAll('.ai-tab').forEach(function (el) {
+            var on = el.dataset.tool === key;
+            el.classList.toggle('active', on);
+            el.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        $('ai-tool-title').textContent = t.label;
+        $('ai-tool-desc').textContent = t.desc;
+        $('ai-go-label').textContent = t.go;
+        $('f-resume').style.display = (t.resume || key === 'bullets') ? '' : 'none';
+        $('f-jd').style.display = t.jd === 'none' ? 'none' : '';
+        $('ai-jd-req').textContent = t.jd === 'required' ? '(required)' : (t.jd === 'optional' ? '(optional, makes the questions specific)' : '');
+        $('f-bullets').style.display = t.bullets ? '' : 'none';
+        $('f-tone').style.display = t.tone ? '' : 'none';
+        $('f-extra').style.display = t.extra ? '' : 'none';
+        if (t.extra) { $('ai-extra-label').textContent = t.extra; $('ai-extra').placeholder = t.extraPh || ''; }
+        $('ai-extra').value = '';
+        history.replaceState(null, '', '?tool=' + key + (resumeSelect() ? '&resume=' + resumeSelect().value : ''));
+    }
+
+    function resumeSelect() { return $('ai-resume'); }
+
+    function reset() {
+        show('ai-empty', false); show('ai-loading', false); show('ai-error', false);
+        show('ai-output', false); show('ai-disclaimer', false); show('ai-result-actions', false);
+    }
+
+    function setBusy(on) {
+        var btn = $('ai-go');
+        btn.disabled = on;
+        btn.classList.toggle('is-busy', on);
+        $('ai-go-label').textContent = on ? 'Writing...' : TOOLS[current].go;
+    }
+
+    $('ai-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var t = TOOLS[current];
+        var body = { tone: $('ai-tone').value, extra: $('ai-extra').value };
+        // the bullet improver uses the resume only as background, the others need it
+        if ((t.resume || current === 'bullets') && resumeSelect()) body.resume_id = resumeSelect().value;
+        if (t.jd !== 'none') body.job_description = $('ai-jd').value;
+        if (t.bullets) body.bullets = $('ai-bullets').value;
+
+        reset(); show('ai-loading', true); setBusy(true);
+        fetch('/api/ai-tools/' + current, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+            .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+            .then(function (res) {
+                reset();
+                if (!res.ok || !res.j.reply) {
+                    var msg = (res.j && res.j.error) || (res.status === 429 ? 'You have reached the hourly limit for AI tools. Please try again later.' : 'Something went wrong. Please try again.');
+                    $('ai-error').textContent = msg; show('ai-error', true);
+                } else {
+                    lastText = res.j.reply;
+                    $('ai-output').textContent = lastText;
+                    show('ai-output', true); show('ai-disclaimer', true); show('ai-result-actions', true);
+                    $('ai-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            })
+            .catch(function () { reset(); $('ai-error').textContent = 'Could not reach the server. Check your connection and try again.'; show('ai-error', true); })
+            .then(function () { setBusy(false); });
+    });
+
+    $('ai-copy').addEventListener('click', function () {
+        var btn = this;
+        (navigator.clipboard ? navigator.clipboard.writeText(lastText) : Promise.reject()).then(function () {
+            btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1600);
+        }).catch(function () {
+            var r = document.createRange(); r.selectNodeContents($('ai-output')); var s = getSelection(); s.removeAllRanges(); s.addRange(r);
+            btn.textContent = 'Press Ctrl+C'; setTimeout(function () { btn.textContent = 'Copy'; }, 2200);
+        });
+    });
+
+    $('ai-download').addEventListener('click', function () {
+        var blob = new Blob([lastText], { type: 'text/plain;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = current.replace('_', '-') + '.txt';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    });
+
+    if (resumeSelect()) resumeSelect().addEventListener('change', function () { select(current); });
+    select(TOOLS[current] ? current : 'cover_letter');
+})();
+</script>
+{% endblock %}
