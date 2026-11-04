@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% set hide_navbar = not session.get('user_id') %}
+{% block title %}{{ code }} - Smart Resume Analyser{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card error-card" role="alert">
+        <p class="error-code" aria-hidden="true">{{ code }}</p>
+        <h2>{{ heading }}</h2>
+        <p class="error-text">{{ message }}</p>
+        <div class="error-actions">
+            <a class="btn btn-primary" href="{{ url_for('index') }}">{% if session.get('user_id') %}Back to upload{% else %}Go to the start{% endif %}</a>
+            <a class="btn btn-secondary" href="javascript:history.back()">Go back</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

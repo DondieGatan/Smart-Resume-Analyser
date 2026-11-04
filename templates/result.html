@@ -347,10 +347,10 @@
     <a href="{{ url_for('personalize', resume_id=resume.id) }}" class="btn btn-primary">Get Personalized Feedback</a>
     <a href="{{ url_for('job_match', resume_id=resume.id) }}" class="btn btn-secondary">Match Against Job Description</a>
     <a href="{{ url_for('ai_tools_page', resume=resume.id, tool='cover_letter') }}" class="btn btn-secondary">AI Tools</a>
-    <button id="export-result-btn" class="btn btn-secondary" onclick="exportResultPDF()" type="button">Export as PDF</button>
+    <button id="export-result-btn" class="btn btn-secondary" type="button">Export as PDF</button>
     <a href="{{ url_for('index') }}" class="btn btn-secondary">Analyse Another Resume</a>
     <a href="{{ url_for('history') }}" class="btn btn-secondary">View History</a>
-    <form method="POST" action="{{ url_for('delete_resume_route', resume_id=resume.id) }}" onsubmit="return confirmDeleteSubmit(event, this, 'Permanently delete this resume and its analysis? This can\'t be undone.');" style="display:inline;">
+    <form method="POST" action="{{ url_for('delete_resume_route', resume_id=resume.id) }}" data-confirm-submit="Permanently delete this resume and its analysis? This can&#39;t be undone." style="display:inline;">
         <button type="submit" class="btn btn-danger">Delete This Resume</button>
     </form>
 </div>
@@ -359,6 +359,8 @@
 {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
+document.getElementById('export-result-btn').addEventListener('click', function () { exportResultPDF(); });
+
 function exportResultPDF() {
     var overlay = document.createElement('div');
     overlay.id = 'pdf-overlay';

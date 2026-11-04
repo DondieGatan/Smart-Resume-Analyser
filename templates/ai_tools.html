@@ -239,6 +239,30 @@
     });
 
     if (resumeSelect()) resumeSelect().addEventListener('change', function () { select(current); });
+
+    // Small conveniences: a live character count on the long boxes, Ctrl+Enter to generate, and the last
+    // tone you chose is remembered in this browser (all optional: nothing breaks if storage is blocked).
+    [['ai-jd', 5000], ['ai-bullets', 3000]].forEach(function (pair) {
+        var box = $(pair[0]), note = document.createElement('small');
+        note.className = 'ai-count'; note.setAttribute('aria-hidden', 'true');
+        box.parentNode.appendChild(note);
+        function update() {
+            var n = box.value.length;
+            note.textContent = n ? n.toLocaleString() + ' / ' + pair[1].toLocaleString() : '';
+            note.classList.toggle('ai-count-near', n > pair[1] * 0.9);
+        }
+        box.addEventListener('input', update); update();
+    });
+    $('ai-form').addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !$('ai-go').disabled) { e.preventDefault(); $('ai-go').click(); }
+    });
+    try {
+        var savedTone = localStorage.getItem('ai-tone');
+        if (savedTone && $('ai-tone').querySelector('option[value="' + savedTone + '"]')) { $('ai-tone').value = savedTone; showToneHelp(); }
+        $('ai-tone').addEventListener('change', function () { try { localStorage.setItem('ai-tone', this.value); } catch (e) {} });
+    } catch (e) {}
+    $('ai-go').title = 'Ctrl+Enter';
+
     select(TOOLS[current] ? current : 'cover_letter');
 })();
 </script>

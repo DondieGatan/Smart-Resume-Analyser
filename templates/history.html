@@ -11,8 +11,8 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="history-search-icon">
                     <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/>
                 </svg>
-                <input type="text" id="history-search" placeholder="Search by name, email or field..." oninput="filterHistory(this.value)">
-                <button id="history-clear-btn" onclick="clearSearch()" title="Clear search" style="display:none;">
+                <input type="text" id="history-search" placeholder="Search by name, email or field...">
+                <button id="history-clear-btn" title="Clear search" style="display:none;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
                 </button>
             </div>
@@ -65,7 +65,7 @@
                     <td>
                         <div style="display:flex;gap:0.4rem;">
                             <a href="{{ url_for('result', resume_id=r.id) }}" class="btn btn-secondary btn-sm">View</a>
-                            <form method="POST" action="{{ url_for('delete_resume_route', resume_id=r.id) }}" onsubmit="return confirmDeleteSubmit(event, this, 'Permanently delete this resume and its analysis? This can\'t be undone.');">
+                            <form method="POST" action="{{ url_for('delete_resume_route', resume_id=r.id) }}" data-confirm-submit="Permanently delete this resume and its analysis? This can&#39;t be undone.">
                                 <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                             </form>
                         </div>
@@ -101,7 +101,7 @@
             </dl>
             <div class="history-card-actions">
                 <a href="{{ url_for('result', resume_id=r.id) }}" class="btn btn-secondary btn-sm">View</a>
-                <form method="POST" action="{{ url_for('delete_resume_route', resume_id=r.id) }}" onsubmit="return confirmDeleteSubmit(event, this, 'Permanently delete this resume and its analysis? This can\'t be undone.');">
+                <form method="POST" action="{{ url_for('delete_resume_route', resume_id=r.id) }}" data-confirm-submit="Permanently delete this resume and its analysis? This can&#39;t be undone.">
                     <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                 </form>
             </div>
@@ -143,6 +143,13 @@ function clearSearch() {
     if (input) { input.value = ''; input.focus(); }
     filterHistory('');
 }
+
+(function () {
+    var input = document.getElementById('history-search');
+    var clearBtn = document.getElementById('history-clear-btn');
+    if (input) input.addEventListener('input', function () { filterHistory(input.value); });
+    if (clearBtn) clearBtn.addEventListener('click', clearSearch);
+})();
 </script>
 <style>
 .history-search-wrap {

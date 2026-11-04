@@ -10,9 +10,8 @@ Safety rules that apply to every tool:
 """
 import re
 
-import requests
-
-from config import Config
+import gemini_client
+from text_cleanup import clean_reply, plain_text  # noqa: F401  (plain_text is re-exported for callers and tests)
 
 MAX_RESUME_CHARS = 9000
 MAX_JD_CHARS = 5000
@@ -228,60 +227,6 @@ def build_prompt(tool, resume_text, job_description='', bullets='', tone='profes
     raise ToolError('Unknown tool.')
 
 
-_MARKDOWN_JUNK = re.compile(r'(\*\*|__|`{1,3})')
-_HEADING = re.compile(r'^\s{0,3}#{1,6}\s*', re.M)
-
-
-_EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍™®©]')
-_BULLET_SYMBOLS = '•●▪◦‣⁃■▫∙·'
-_QUOTES = {'‘': "'", '’': "'", '‚': "'", '‛': "'", '′': "'",
-           '“': '"', '”': '"', '„': '"', '‟': '"', '″': '"', '«': '"', '»': '"'}
-_SPACES = '            　'
-_INVISIBLE = '​‌⁠﻿­'
-_ARROWS = '→⇒➜➡➔⇨'
-_REPLACEMENTS = {'…': '...', '×': 'x', '≈': '~', '≥': '>=', '≤': '<=', '≠': '!=',
-                 '−': '-', '‐': '-', '‑': '-', '‒': '-'}
-
-
-def plain_text(text):
-    """Turns typographic and decorative characters into ordinary keyboard ones (em dashes, curly quotes, bullet
-    symbols, arrows, emojis, odd spaces), so the reply reads like something typed by a person. Letters from any
-    language, including accented ones, are left alone."""
-    text = text or ''
-    for ch in _INVISIBLE:
-        text = text.replace(ch, '')
-    for ch in _SPACES:
-        text = text.replace(ch, ' ')
-    for k, v in _QUOTES.items():
-        text = text.replace(k, v)
-    for k, v in _REPLACEMENTS.items():
-        text = text.replace(k, v)
-    for ch in _ARROWS:
-        text = text.replace(ch, '->')
-    # a bullet symbol at the start of a line is a list item; inside a line it is a separator
-    text = re.sub(r'^[ \t]*[' + re.escape(_BULLET_SYMBOLS) + r'][ 	]*', '- ', text, flags=re.M)
-    text = re.sub(r'[ 	]*[' + re.escape(_BULLET_SYMBOLS) + r'][ 	]*', ' | ', text)
-    # en dash between numbers is a range (2022-2024); any other long dash is a pause, so use a comma
-    text = re.sub(r'(?<=\d)\s*[–—―]\s*(?=\d)', '-', text)
-    text = re.sub(r'\s*[—―]\s*', ', ', text)
-    text = re.sub(r'\s+–\s+', ', ', text)
-    text = text.replace('–', '-')
-    text = _EMOJI.sub('', text)
-    text = re.sub(r'[ \t]+,', ',', text)
-    text = re.sub(r',\s*,', ',', text)
-    text = re.sub(r'[ \t]{2,}', ' ', text)
-    text = re.sub(r'[ \t]+$', '', text, flags=re.M)
-    return text
-
-
-def clean_reply(text):
-    """The model is told to answer in plain text; strip any markdown that slips through anyway."""
-    text = _MARKDOWN_JUNK.sub('', text or '')
-    text = _HEADING.sub('', text)
-    text = re.sub(r'^\s*\*\s+', '- ', text, flags=re.M)
-    return plain_text(text).strip()
-
-
 def _squash(text):
     return re.sub(r'[^a-z0-9+#]', '', (text or '').lower())
 
@@ -312,40 +257,17 @@ def keep_skills_found_in_resume(reply, resume_text):
     return re.sub(r'(Skills to list:[ \t]*\n?[ \t]*)([^\n]+)', fix, reply, count=1)
 
 
-def _generation_config(max_tokens, temperature, thinking_budget=0):
-    """Gemini 2.5 "flash" models spend part of maxOutputTokens on hidden thinking, which cut these writing
-    answers off mid-sentence. So thinking is switched off unless a tool asks for some, and then the thinking
-    tokens are added on top of the answer's own budget."""
-    config = {'maxOutputTokens': max_tokens, 'temperature': temperature}
-    if 'flash' in (Config.GEMINI_MODEL or ''):
-        config['thinkingConfig'] = {'thinkingBudget': thinking_budget}
-        config['maxOutputTokens'] = max_tokens + thinking_budget
-    return config
-
-
 def call_gemini(system_prompt, user_message, max_tokens=1500, temperature=0.6, thinking_budget=0):
-    """One Gemini request. Raises requests.RequestException on a network or HTTP failure."""
-    resp = requests.post(
-        f'https://generativelanguage.googleapis.com/v1beta/models/{Config.GEMINI_MODEL}:generateContent',
-        headers={'x-goog-api-key': Config.GEMINI_API_KEY},
-        json={
-            'system_instruction': {'parts': [{'text': system_prompt}]},
-            'contents': [{'role': 'user', 'parts': [{'text': user_message}]}],
-            'generationConfig': _generation_config(max_tokens, temperature, thinking_budget),
-        },
-        timeout=45,
-    )
-    resp.raise_for_status()
-    candidates = resp.json().get('candidates') or []
-    if not candidates:
+    """One Gemini request for a tool. Raises requests.RequestException on a network or HTTP failure and ToolError
+    (safe to show) when the model returns nothing."""
+    try:
+        reply = gemini_client.generate(system_prompt, [('user', user_message)], max_tokens, temperature,
+                                       thinking_budget, timeout=45)
+    except gemini_client.EmptyAnswer:
         raise ToolError('The AI did not return an answer for that. Try rewording or shortening your input.')
-    parts = (candidates[0].get('content') or {}).get('parts') or []
-    text = ''.join(p.get('text', '') for p in parts).strip()
-    if not text:
-        raise ToolError('The AI did not return an answer for that. Try rewording or shortening your input.')
-    if candidates[0].get('finishReason') == 'MAX_TOKENS':
-        text += '\n\n[The answer was cut short. Press Generate again, or shorten what you pasted.]'
-    return text
+    if reply.truncated:
+        return reply.text + '\n\n[The answer was cut short. Press Generate again, or shorten what you pasted.]'
+    return reply.text
 
 
 def stock_phrases_in(text):

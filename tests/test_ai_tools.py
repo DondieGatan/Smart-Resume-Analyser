@@ -3,6 +3,7 @@ are needed (the model call is replaced), so these run anywhere."""
 import pytest
 
 import ai_tools
+import gemini_client
 from ai_tools import ToolError, build_prompt, clean_reply
 
 RESUME = 'Alex Morgan. Python, Flask, React. Built a dashboard that cut report time by 40%.'
@@ -96,10 +97,10 @@ def test_run_tool_returns_the_cleaned_model_reply(monkeypatch):
 
 
 def test_thinking_is_off_for_flash_models_and_untouched_for_others(monkeypatch):
-    monkeypatch.setattr(ai_tools.Config, 'GEMINI_MODEL', 'gemini-2.5-flash')
-    assert ai_tools._generation_config(1000, 0.5)['thinkingConfig'] == {'thinkingBudget': 0}
-    monkeypatch.setattr(ai_tools.Config, 'GEMINI_MODEL', 'gemini-2.5-pro')
-    assert 'thinkingConfig' not in ai_tools._generation_config(1000, 0.5)
+    monkeypatch.setattr(gemini_client.Config, 'GEMINI_MODEL', 'gemini-2.5-flash')
+    assert gemini_client.generation_config(1000, 0.5)['thinkingConfig'] == {'thinkingBudget': 0}
+    monkeypatch.setattr(gemini_client.Config, 'GEMINI_MODEL', 'gemini-2.5-pro')
+    assert 'thinkingConfig' not in gemini_client.generation_config(1000, 0.5)
 
 
 class _Resp:
@@ -115,12 +116,12 @@ class _Resp:
 
 def test_a_truncated_answer_is_flagged(monkeypatch):
     payload = {'candidates': [{'finishReason': 'MAX_TOKENS', 'content': {'parts': [{'text': 'Half an ans'}]}}]}
-    monkeypatch.setattr(ai_tools.requests, 'post', lambda *a, **k: _Resp(payload))
+    monkeypatch.setattr(gemini_client.requests, 'post', lambda *a, **k: _Resp(payload))
     assert 'cut short' in ai_tools.call_gemini('sys', 'user')
 
 
 def test_an_empty_answer_is_a_friendly_error(monkeypatch):
-    monkeypatch.setattr(ai_tools.requests, 'post', lambda *a, **k: _Resp({'candidates': []}))
+    monkeypatch.setattr(gemini_client.requests, 'post', lambda *a, **k: _Resp({'candidates': []}))
     with pytest.raises(ToolError):
         ai_tools.call_gemini('sys', 'user')
 
@@ -193,8 +194,8 @@ def test_linkedin_runs_with_thinking_and_low_temperature(monkeypatch):
 
 
 def test_thinking_tokens_are_added_to_the_answer_budget(monkeypatch):
-    monkeypatch.setattr(ai_tools.Config, 'GEMINI_MODEL', 'gemini-2.5-flash')
-    cfg = ai_tools._generation_config(2000, 0.4, 1024)
+    monkeypatch.setattr(gemini_client.Config, 'GEMINI_MODEL', 'gemini-2.5-flash')
+    cfg = gemini_client.generation_config(2000, 0.4, 1024)
     assert cfg['thinkingConfig'] == {'thinkingBudget': 1024} and cfg['maxOutputTokens'] == 3024
 
 
