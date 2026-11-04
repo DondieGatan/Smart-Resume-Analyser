@@ -23,9 +23,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ asset_v }}">
 </head>
 <body class="{% if hide_navbar %}auth-page{% endif %}{% if body_bg %} app-bg-page{% endif %}">
+    <a class="skip-link" href="#main-content">Skip to content</a>
 
     {% if session.get('user_id') %}
     <div class="app-shell">
@@ -35,7 +36,7 @@
                     <span class="sidebar-logo">SR</span>
                     <span class="sidebar-brand-text">Smart Resume<small>Analyser</small></span>
                 </a>
-                <button type="button" class="sidebar-collapse-toggle" id="sidebar-collapse-toggle" onclick="toggleSidebarCollapse()" title="Collapse menu">
+                <button type="button" class="sidebar-collapse-toggle" id="sidebar-collapse-toggle" data-action="toggle-sidebar-collapse" title="Collapse menu">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>
                 </button>
             </div>
@@ -74,7 +75,7 @@
 
             <div class="sidebar-bottom">
                 <div class="sidebar-section-label">General</div>
-                <button type="button" class="sidebar-theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">
+                <button type="button" class="sidebar-theme-toggle" id="theme-toggle" data-action="toggle-theme" title="Toggle dark/light mode">
                     <span class="theme-switch" id="theme-switch">
                         <span class="theme-switch-knob">
                             <svg id="theme-icon-sun" class="theme-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -92,7 +93,7 @@
                     <span class="sidebar-link-text">Sign Out</span>
                 </a>
                 <form method="POST" action="{{ url_for('delete_account_route') }}" id="delete-account-form">
-                    <button type="button" class="sidebar-danger-link" title="Delete Account" onclick="openDeleteAccountModal()">
+                    <button type="button" class="sidebar-danger-link" title="Delete Account" data-action="open-delete-account">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                         <span class="sidebar-link-text">Delete Account</span>
                     </button>
@@ -100,9 +101,9 @@
             </div>
         </aside>
 
-        <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+        <div class="sidebar-backdrop" id="sidebar-backdrop" data-action="close-sidebar"></div>
 
-        <div class="modal-overlay" id="delete-account-modal" role="dialog" aria-modal="true" aria-labelledby="delete-account-modal-title" onclick="if (event.target === this) closeDeleteAccountModal()">
+        <div class="modal-overlay" id="delete-account-modal" role="dialog" aria-modal="true" aria-labelledby="delete-account-modal-title" data-backdrop="close-delete-account">
             <div class="modal-box">
                 <div class="modal-icon modal-icon-danger">
                     <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
@@ -110,8 +111,8 @@
                 <h3 id="delete-account-modal-title">Delete your account?</h3>
                 <p>This permanently deletes your account <strong>and every resume you've uploaded</strong>. This action cannot be undone.</p>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeDeleteAccountModal()">Cancel</button>
-                    <button type="button" class="btn btn-danger" onclick="document.getElementById('delete-account-form').submit()">Delete Account</button>
+                    <button type="button" class="btn btn-secondary" data-action="close-delete-account">Cancel</button>
+                    <button type="button" class="btn btn-danger" data-action="submit-delete-account">Delete Account</button>
                 </div>
             </div>
         </div>
@@ -119,7 +120,7 @@
         <!-- Generic themed confirm modal — replaces native confirm() everywhere
              a page needs a yes/no prompt (delete a resume, clear a draft, etc.)
              so it matches the app's own look instead of the browser's default. -->
-        <div class="modal-overlay" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" onclick="if (event.target === this) _resolveConfirmModal(false)">
+        <div class="modal-overlay" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" data-backdrop="confirm-cancel">
             <div class="modal-box">
                 <div class="modal-icon modal-icon-danger">
                     <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
@@ -127,15 +128,15 @@
                 <h3 id="confirm-modal-title">Are you sure?</h3>
                 <p id="confirm-modal-message"></p>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="_resolveConfirmModal(false)">Cancel</button>
-                    <button type="button" class="btn btn-danger" id="confirm-modal-confirm-btn" onclick="_resolveConfirmModal(true)">Delete</button>
+                    <button type="button" class="btn btn-secondary" data-action="confirm-cancel">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-modal-confirm-btn" data-action="confirm-ok">Delete</button>
                 </div>
             </div>
         </div>
 
         <div class="app-content">
             <header class="app-topbar">
-                <button type="button" class="mobile-menu-btn" onclick="openSidebar()" aria-label="Open menu">
+                <button type="button" class="mobile-menu-btn" data-action="open-sidebar" aria-label="Open menu">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
                 </button>
                 <span class="app-topbar-datetime" id="topbar-datetime"></span>
@@ -149,7 +150,7 @@
                 {% endif %}
             {% endwith %}
 
-            <main class="main">
+            <main class="main" id="main-content" tabindex="-1">
                 {% block content %}{% endblock %}
             </main>
 
@@ -170,7 +171,7 @@
             <nav>
                 <a href="{{ url_for('login') }}">Login</a>
                 <a href="{{ url_for('register') }}" class="btn btn-primary" style="padding:0.4rem 1.2rem;font-size:0.85rem;">Sign Up</a>
-                <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">
+                <button id="theme-toggle" class="theme-toggle" data-action="toggle-theme" title="Toggle dark/light mode">
                     <svg id="theme-icon-sun" class="theme-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
                     </svg>
@@ -191,7 +192,7 @@
         {% endif %}
     {% endwith %}
 
-    <main class="main">
+    <main class="main" id="main-content" tabindex="-1">
         {{ self.content() }}
     </main>
 
@@ -200,137 +201,8 @@
     </footer>
     {% endif %}
 
-    <script>
-        function toggleTheme() {
-            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            if (isDark) {
-                document.documentElement.removeAttribute('data-theme');
-                localStorage.setItem('theme', 'light');
-            } else {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                localStorage.setItem('theme', 'dark');
-            }
-            updateThemeIcons();
-        }
-
-        // Icon visibility and the switch knob's position are driven purely by
-        // CSS off the [data-theme] attribute (see style.css) — that attribute
-        // is already set synchronously in <head>, before first paint, so
-        // nothing here needs to run before the page can render correctly.
-        // Doing this in JS instead used to mean every full-page navigation
-        // rendered the switch in its default (light) position for a moment,
-        // then visibly slid into place once this ran on DOMContentLoaded —
-        // only the text label still needs JS, since CSS can't set that.
-        function updateThemeIcons() {
-            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            var label = document.getElementById('theme-toggle-label');
-            if (label) label.textContent = isDark ? 'Light mode' : 'Dark mode';
-        }
-
-        // Update icons on load
-        document.addEventListener('DOMContentLoaded', updateThemeIcons);
-
-        // User dropdown menu (legacy navbar, logged-out pages don't use it but kept safe)
-        function toggleUserMenu() {
-            var dd = document.getElementById('user-dropdown');
-            if (dd) dd.classList.toggle('show');
-        }
-        document.addEventListener('click', function(e) {
-            var btn = document.getElementById('user-menu-btn');
-            var dd = document.getElementById('user-dropdown');
-            if (dd && btn && !btn.contains(e.target) && !dd.contains(e.target)) {
-                dd.classList.remove('show');
-            }
-        });
-
-        // ---------- Sidebar collapse (desktop icon-only mode) ----------
-        function toggleSidebarCollapse() {
-            var collapsed = document.documentElement.getAttribute('data-sidebar-collapsed') === 'true';
-            if (collapsed) {
-                document.documentElement.removeAttribute('data-sidebar-collapsed');
-                localStorage.setItem('sidebarCollapsed', 'false');
-            } else {
-                document.documentElement.setAttribute('data-sidebar-collapsed', 'true');
-                localStorage.setItem('sidebarCollapsed', 'true');
-            }
-            updateSidebarCollapseToggle();
-        }
-        function updateSidebarCollapseToggle() {
-            var btn = document.getElementById('sidebar-collapse-toggle');
-            if (!btn) return;
-            var collapsed = document.documentElement.getAttribute('data-sidebar-collapsed') === 'true';
-            btn.title = collapsed ? 'Expand menu' : 'Collapse menu';
-        }
-        document.addEventListener('DOMContentLoaded', updateSidebarCollapseToggle);
-
-        // ---------- Sidebar (mobile off-canvas) ----------
-        function openSidebar() {
-            var sb = document.getElementById('sidebar');
-            var bd = document.getElementById('sidebar-backdrop');
-            if (sb) sb.classList.add('open');
-            if (bd) bd.classList.add('show');
-        }
-        function closeSidebar() {
-            var sb = document.getElementById('sidebar');
-            var bd = document.getElementById('sidebar-backdrop');
-            if (sb) sb.classList.remove('open');
-            if (bd) bd.classList.remove('show');
-        }
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeSidebar();
-        });
-
-        // ---------- Delete-account confirmation modal ----------
-        function openDeleteAccountModal() {
-            var modal = document.getElementById('delete-account-modal');
-            if (modal) modal.classList.add('show');
-        }
-        function closeDeleteAccountModal() {
-            var modal = document.getElementById('delete-account-modal');
-            if (modal) modal.classList.remove('show');
-        }
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeDeleteAccountModal();
-        });
-
-        // ---------- Generic themed confirm modal (replaces native confirm()) ----------
-        var _confirmModalResolve = null;
-        function showConfirmModal(message, options) {
-            options = options || {};
-            document.getElementById('confirm-modal-title').textContent = options.title || 'Are you sure?';
-            document.getElementById('confirm-modal-message').textContent = message;
-            document.getElementById('confirm-modal-confirm-btn').textContent = options.confirmLabel || 'Delete';
-            document.getElementById('confirm-modal').classList.add('show');
-            return new Promise(function(resolve) { _confirmModalResolve = resolve; });
-        }
-        function _resolveConfirmModal(result) {
-            document.getElementById('confirm-modal').classList.remove('show');
-            if (_confirmModalResolve) { _confirmModalResolve(result); _confirmModalResolve = null; }
-        }
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') _resolveConfirmModal(false);
-        });
-
-        // Shared helper for "Delete" forms: intercepts the submit, shows the
-        // themed modal, and only actually submits the form if confirmed.
-        function confirmDeleteSubmit(e, form, message) {
-            e.preventDefault();
-            showConfirmModal(message).then(function(ok) { if (ok) form.submit(); });
-            return false;
-        }
-
-        // ---------- Topbar live date/time ----------
-        function updateTopbarClock() {
-            var el = document.getElementById('topbar-datetime');
-            if (!el) return;
-            var now = new Date();
-            el.textContent = now.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) +
-                ', ' + now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        }
-        updateTopbarClock();
-        setInterval(updateTopbarClock, 30000);
-    </script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/shell.js') }}?v={{ asset_v }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v={{ asset_v }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

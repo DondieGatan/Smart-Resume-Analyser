@@ -59,12 +59,24 @@ SendGrid · jsPDF · Docker · GitHub Actions · HTML/CSS/JS
 ## Project layout
 
 ```
-app.py              Flask routes (auth, upload, dashboard, builder, job match)
-analyzer.py         Resume parsing, scoring, ATS simulation, feedback generation
+app.py              Flask routes (auth, upload, dashboard, builder, job match, error pages)
+analyzer.py         Scoring, recommendations, ATS simulation, job matching, feedback
+resume_parser.py    Finds the name, contact details, skills, education and experience in resume text
+text_extraction.py  PDF / Word / image to text (PyMuPDF, python-docx, Tesseract OCR)
+analyzer_data.py    Reference tables: skills database, degree keywords, job titles, career fields
 models.py           Database access layer (resumes, skills, users, auth)
+gemini_client.py    The one Gemini API client (used by the AI tools and the builder assistant)
+ai_tools.py         AI Tools page: prompts for cover letter, bullets, tailoring, interview, LinkedIn
+builder_assistant.py  Resume Builder assistant: prompt, input limits, reply parsing into suggestion cards
+resume_templates.py The builder's sections (each with a stable id) and their guidance text
+text_cleanup.py     Turns model replies into plain keyboard text (no markdown or special symbols)
 config.py           App configuration (DB, mail, upload limits) via env vars
 templates/          Jinja2 templates
-static/             CSS, JS, images
+static/             CSS, JS, images. static/js/shell.js drives the app shell (theme,
+                    sidebar, dialogs); templates carry no inline event handlers.
+                    The builder page's script is split into
+                    static/js/builder/core.js (draft, preview, autosave),
+                    pdf.js (export) and assistant.js (chat panel)
 uploads/            Uploaded resume files (gitignored — not under static/,
                     since resumes contain PII and static/ has no auth check;
                     served through the authenticated /uploads/<filename> route)

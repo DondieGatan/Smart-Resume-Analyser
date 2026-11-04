@@ -4649,3 +4649,72 @@ select option:disabled { color: #6b7075; }
 .ai-chat-close { color: var(--on-brand); }
 .ai-chat-close:hover { background: rgba(0, 0, 0, 0.12); }
 .ai-chat-header, .ai-chat-header * { color: var(--on-brand); }
+
+/* =============================================
+   Error pages (404, 413, 429, 500 ...)
+   ============================================= */
+.error-card { text-align: center; max-width: 520px; }
+.error-code {
+    margin: 0 0 0.25rem;
+    font-size: clamp(4.5rem, 14vw, 7rem);
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: transparent;
+    -webkit-text-stroke: 2px var(--text-soft);
+    background: linear-gradient(180deg, var(--text) 0%, transparent 85%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    opacity: 0.9;
+}
+.error-card h2 { margin: 0 0 0.6rem; font-size: 1.5rem; }
+.error-text { margin: 0 auto 1.75rem; max-width: 36ch; color: var(--text-soft); line-height: 1.6; }
+.error-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
+.error-actions .btn { min-width: 9.5rem; justify-content: center; }
+
+/* Score breakdown: four cards fill one row on wide screens, two by two below that (never three plus one) */
+.scores-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 1360px) { .scores-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 768px) { .scores-grid { grid-template-columns: 1fr; } }
+
+/* AI Tools: live character count under the long boxes */
+.ai-count { display: block; margin-top: 0.3rem; text-align: right; font-size: 0.74rem; color: var(--text-soft); font-variant-numeric: tabular-nums; min-height: 1em; }
+.ai-count-near { color: var(--text); font-weight: 600; }
+
+/* =============================================
+   Keyboard access: a skip link and a clear focus ring on every control (both themes)
+   ============================================= */
+.skip-link {
+    position: fixed; left: 1rem; top: -4rem; z-index: 100000;
+    padding: 0.65rem 1.1rem; border-radius: 999px;
+    background: var(--brand); color: var(--on-brand);
+    font-weight: 600; font-size: 0.9rem; text-decoration: none;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+    transition: top 0.2s ease;
+}
+.skip-link:focus { top: 1rem; outline: 2px solid var(--text); outline-offset: 2px; }
+#main-content:focus { outline: none; }
+
+a:focus-visible, button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-visible,
+summary:focus-visible, [tabindex]:focus-visible, .btn:focus-visible, .sidebar-link:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 3px;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 1px; }
+
+/* =============================================
+   Resume Builder (rules that used to live in a <style> block inside the template)
+   ============================================= */
+@keyframes spin { to { transform: rotate(360deg); } }
+#export-btn { background: linear-gradient(145deg, #15803d, #166534); color: #fff; }
+#export-btn:disabled, #analyze-btn:disabled { opacity: 0.7; cursor: wait; }
+.spell-status { font-size: 0.8rem; margin-top: 4px; min-height: 1.2em; transition: all 0.3s; }
+.spell-ok { color: var(--success); font-weight: 600; }
+.spell-warn { color: var(--warning); font-weight: 600; }
+
+/* Chat: your own message bubble used white text on the theme's light accent (unreadable in dark mode) */
+.ai-chat-msg-user { background: var(--brand); color: var(--on-brand); border: 1px solid rgba(255, 255, 255, 0.35); }
+.ai-chat-msg-user .ai-chat-text { color: inherit; }
+.ai-chat-apply-btn { background: var(--brand); color: var(--on-brand); }
+.ai-chat-apply-btn:hover { filter: brightness(0.93); }
+.ai-chat-apply-btn:disabled { opacity: 0.65; cursor: default; filter: none; }

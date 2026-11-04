@@ -12,9 +12,11 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from config import Config
+from resume_templates import RESUME_TEMPLATES
 import ai_tools
+import builder_assistant
 from analyzer import (analyse_resume, IMAGE_EXTENSIONS, generate_personalized_feedback,
-                      match_job_description, RESUME_TEMPLATES, SKILLS_DB, highlight_matches)
+                      match_job_description, SKILLS_DB, highlight_matches)
 from models import (save_resume, save_skills, save_education, save_experience,
                     save_analysis_results, get_resume_by_id, get_all_resumes,
                     get_dashboard_data, init_users_table, register_user,
@@ -664,6 +666,11 @@ def job_match(resume_id):
                            job_description=job_description)
 
 
+def _per_user_key():
+    """Rate-limit AI calls per signed-in user, not per IP (people share networks)."""
+    return 'user-%s' % session.get('user_id', get_remote_address())
+
+
 # --------------------------------------------------------------------------
 # Feature 4: Resume Builder
 # --------------------------------------------------------------------------
@@ -688,91 +695,29 @@ def builder_template(template_id):
     return redirect(url_for('builder'))
 
 
-def _builder_section_legend():
-    """Numbered list of the builder's sections plus whether each is a single
-    text block (safe for the AI to directly rewrite) or a repeatable
-    structured section like Work Experience (multiple entries with separate
-    fields — a single block of replacement text doesn't map onto that)."""
-    sections = RESUME_TEMPLATES['universal']['sections']
-    lines = []
-    for i, s in enumerate(sections, start=1):
-        kind = ('repeatable — holds multiple structured entries; never use a SUGGEST '
-                'marker for this one' if s.get('type') == 'repeatable'
-                else 'a single text block — safe to suggest a direct replacement for')
-        lines.append(f'{i}. {s["name"]} ({kind})')
-    return '\n'.join(lines)
-
-
-def _resume_chat_reply(message, history, resume_context):
-    """Call Google's Gemini API for the Resume Builder's AI assistant.
-    Raises on failure — the caller decides how to report it."""
-    system_prompt = (
-        'You are a friendly, encouraging resume-writing assistant embedded in a '
-        'resume builder tool. Help the user strengthen their resume: sharpen '
-        'wording, suggest strong action verbs, quantify achievements, fix clarity '
-        'issues, and keep advice ATS-friendly (simple formatting, no tables or '
-        'graphics). Keep replies concise and grounded in the user\'s actual resume '
-        "content below — don't ask them to repeat information that's already there. "
-        'Reply in plain text only — no markdown (no **bold**, no # headings, no '
-        'backticks); use plain dashes or numbers for lists instead.\n\n'
-        'The resume has these sections, in order:\n' + _builder_section_legend() + '\n\n'
-        'When you have a concrete, ready-to-use replacement for one of the single-'
-        'text-block sections above, wrap ONLY that replacement text in a marker on '
-        'its own lines, using the section\'s number from the list, like this:\n'
-        '[[SUGGEST:3]]\nThe improved text goes here.\n[[/SUGGEST]]\n'
-        'Never wrap a repeatable section (Work Experience, Education) in a SUGGEST '
-        "marker — describe what to change there in plain sentences instead, since "
-        "those hold several separate fields you can't replace with one block of "
-        'text. Only use a SUGGEST marker when confidently rewriting that whole '
-        "section's content; for general advice, questions, or lists of ideas, just "
-        'reply normally with no marker.\n\n'
-        'Current resume draft:\n' + (resume_context or '(nothing written yet)')
-    )
-    contents = []
-    for turn in history[-10:]:
-        if not isinstance(turn, dict):
-            continue
-        role = turn.get('role')
-        content = (turn.get('content') or '').strip()[:2000]
-        if role in ('user', 'assistant') and content:
-            contents.append({'role': 'model' if role == 'assistant' else 'user', 'parts': [{'text': content}]})
-    contents.append({'role': 'user', 'parts': [{'text': message}]})
-
-    resp = requests.post(
-        f'https://generativelanguage.googleapis.com/v1beta/models/{Config.GEMINI_MODEL}:generateContent',
-        headers={'x-goog-api-key': Config.GEMINI_API_KEY},
-        json={
-            'system_instruction': {'parts': [{'text': system_prompt}]},
-            'contents': contents,
-            'generationConfig': {'maxOutputTokens': 2048, 'temperature': 0.7},
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
-
-
 @app.route('/api/resume-chat', methods=['POST'])
 @login_required
-@limiter.limit('20 per hour')
+@limiter.limit('30 per hour', key_func=_per_user_key)
+@limiter.limit('6 per minute', key_func=_per_user_key)
 def api_resume_chat():
-    """AI assistant chat for the Resume Builder. Sends the user's message plus
-    their current draft as context to an LLM and returns a reply. Free tier,
-    but still rate-limited since it shares one project-wide quota."""
+    """AI assistant chat for the Resume Builder. The request is {message, history, draft, action?}; the prompt,
+    the section list and the parsing of the reply all live in builder_assistant, so this route only validates the
+    request and maps failures to status codes. Free tier, but rate-limited per signed-in user since every user
+    shares one project-wide quota."""
     if not Config.GEMINI_API_KEY:
         return jsonify({'error': 'The AI assistant is not configured on this server yet.'}), 503
 
     data = request.get_json(silent=True) or {}
-    message = (data.get('message') or '').strip()[:2000]
-    if not message:
-        return jsonify({'error': 'Please enter a message.'}), 400
-
-    history = data.get('history') if isinstance(data.get('history'), list) else []
-    resume_context = (data.get('resume_context') or '').strip()[:6000]
-
     try:
-        reply = _resume_chat_reply(message, history, resume_context)
-        return jsonify({'reply': reply})
+        result = builder_assistant.chat(
+            message=str(data.get('message') or ''),
+            history=data.get('history'),
+            draft=data.get('draft'),
+            action=data.get('action'),
+        )
+        return jsonify(result)
+    except builder_assistant.AssistantError as e:
+        return jsonify({'error': str(e)}), 400
     except requests.exceptions.RequestException:
         app.logger.exception('Resume chat: Gemini request failed')
         return jsonify({'error': 'The AI assistant is temporarily unavailable. Please try again shortly.'}), 502
@@ -786,11 +731,6 @@ def api_resume_chat():
 # --------------------------------------------------------------------------
 
 AI_TOOL_NAMES = ('cover_letter', 'bullets', 'tailor', 'interview', 'linkedin')
-
-
-def _per_user_key():
-    """Rate-limit AI calls per signed-in user, not per IP (people share networks)."""
-    return 'user-%s' % session.get('user_id', get_remote_address())
 
 
 @app.route('/ai-tools')
@@ -847,6 +787,56 @@ def api_ai_tool(tool):
     except Exception:
         app.logger.exception('AI tool %s: unexpected error', tool)
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
+
+
+# A version string for static files (the newest modification time), added to script and stylesheet URLs so a
+# browser that cached an older copy fetches the new one after a deploy.
+def _static_version():
+    newest = 0
+    for folder in ('static/js', 'static/css'):
+        base = os.path.join(app.root_path, folder)
+        for dirpath, _dirs, files in os.walk(base):
+            for name in files:
+                newest = max(newest, int(os.path.getmtime(os.path.join(dirpath, name))))
+    return str(newest)
+
+
+ASSET_VERSION = _static_version()
+
+
+@app.context_processor
+def _inject_asset_version():
+    return {'asset_v': ASSET_VERSION}
+
+
+# --------------------------------------------------------------------------
+# Error pages
+# --------------------------------------------------------------------------
+
+ERROR_COPY = {
+    403: ('You cannot open that', 'You do not have permission to view this page.'),
+    404: ('Page not found', 'We could not find that page. It may have moved, or the link may be mistyped.'),
+    405: ('That action is not allowed', 'This page cannot be used that way. Go back and try again.'),
+    413: ('That file is too large', 'The limit is 16 MB. Try a smaller file, or save your resume as a PDF.'),
+    429: ('Slow down a little', 'There were a lot of requests in a short time. Wait a minute and try again.'),
+    500: ('Something went wrong', 'That was on our side, not yours. Please try again in a moment.'),
+}
+
+
+def _render_error(error):
+    """Styled page for browsers, a small JSON body for /api/ calls (the page's own scripts read these)."""
+    code = getattr(error, 'code', None) or 500
+    heading, message = ERROR_COPY.get(code, ERROR_COPY[500])
+    if code >= 500:
+        app.logger.error('Unhandled error %s on %s', code, request.path,
+                         exc_info=getattr(error, 'original_exception', None))
+    if request.path.startswith('/api/') or request.is_json:
+        return jsonify({'error': message}), code
+    return render_template('error.html', code=code, heading=heading, message=message), code
+
+
+for _code in ERROR_COPY:
+    app.register_error_handler(_code, _render_error)
 
 
 # --------------------------------------------------------------------------
