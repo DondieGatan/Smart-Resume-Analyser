@@ -114,7 +114,7 @@
         interview: { label: 'Interview Prep', go: 'Create questions', desc: 'Likely questions for you, with coaching on how to answer from your own resume.',
             resume: true, jd: 'optional', bullets: false, tone: false, extra: null,
             icon: '<path d="M5 5h14v10H11l-4 4v-4H5z"/><path d="M9 9h6M9 12h4"/>' },
-        linkedin: { label: 'LinkedIn Profile', go: 'Write my profile', desc: 'Headline options, an About section and the skills to list.',
+        linkedin: { label: 'LinkedIn Profile', go: 'Write my profile', desc: 'Headlines, an About section, experience entries, education and skills, all taken from your resume.',
             resume: true, jd: 'none', bullets: false, tone: true, extra: 'Target role or industry (optional)', extraPh: 'e.g. fintech, data analyst',
             icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 11v5M8.5 8.2v.1M12 16v-5M12 13c0-1.4 1-2 2-2s2 .7 2 2v3"/>' }
     };
@@ -122,7 +122,7 @@
     var TONE_HELP = {
         professional: '<strong>Professional</strong>: formal and polished, full sentences, no slang. The safe choice for most employers, banks, law, government and large companies.',
         warm: '<strong>Warm</strong>: friendly and enthusiastic, reads like a real person who is excited about the role. Good for startups, creative, teaching, healthcare and people-focused jobs.',
-        concise: '<strong>Concise</strong>: short and direct with no filler, and about a third shorter (a cover letter of 150 to 200 words instead of 250 to 330). Good for busy recruiters and senior roles.'
+        concise: '<strong>Concise</strong>: short and direct with no filler, and noticeably shorter (a cover letter of about 150 words instead of about 250). Good for busy recruiters and senior roles.'
     };
     var current = {{ initial_tool|tojson }};
     var lastText = '';

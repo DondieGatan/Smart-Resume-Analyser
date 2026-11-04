@@ -85,7 +85,7 @@ def test_clean_reply_strips_markdown():
 def test_run_tool_returns_the_cleaned_model_reply(monkeypatch):
     seen = {}
 
-    def fake(system, user, max_tokens, temperature=0.6):
+    def fake(system, user, max_tokens, temperature=0.6, thinking_budget=0):
         seen['system'], seen['user'] = system, user
         return '**Dear team,** hello'
 
@@ -128,6 +128,117 @@ def test_an_empty_answer_is_a_friendly_error(monkeypatch):
 def test_each_tone_changes_the_prompt_and_concise_is_shorter():
     prompts = {t: build_prompt('cover_letter', RESUME, job_description=JD, tone=t)[0] for t in ai_tools.TONES}
     assert len(set(prompts.values())) == 3
-    assert '150 to 200' in prompts['concise'] and '250 to 330' in prompts['professional']
+    assert '170 to 210' in prompts['concise'] and '290 to 350' in prompts['professional']
     about = {t: build_prompt('linkedin', RESUME, tone=t)[0] for t in ai_tools.TONES}
     assert '60 to 90' in about['concise'] and '120 to 170' in about['warm']
+
+
+SPECIAL = ('He led it — and it worked. 2022–2024 • Python • Flask → done '
+           '“quoted” it’s… \U0001F680 café')
+
+
+def test_plain_text_replaces_special_characters_but_keeps_real_letters():
+    out = ai_tools.plain_text(SPECIAL)
+    assert out == 'He led it, and it worked. 2022-2024 | Python | Flask -> done "quoted" it\'s... café'
+    assert all(ord(c) < 128 or c == 'é' for c in out)
+
+
+def test_plain_text_turns_leading_bullet_symbols_into_dashes_without_joining_lines():
+    assert ai_tools.plain_text('• one\n• two') == '- one\n- two'
+
+
+def test_every_reply_goes_through_plain_text(monkeypatch):
+    monkeypatch.setattr(ai_tools, 'call_gemini', lambda *a, **k: 'Dear team — hello “there”')
+    out = ai_tools.run_tool('cover_letter', resume_text=RESUME, job_description=JD)
+    assert out == 'Dear team, hello "there"'
+
+
+def test_human_writing_rules_are_in_every_cover_letter_tone():
+    for tone in ai_tools.TONES:
+        system, _, _ = build_prompt('cover_letter', RESUME, job_description=JD, tone=tone)
+        for needle in ('em dashes', 'passionate', 'Dear Hiring Manager', 'never contain brackets', 'full name'):
+            assert needle in system, (tone, needle)
+        assert 'Do not claim to have followed the company' in system
+
+
+def test_cover_letter_asks_for_no_placeholders_but_bullet_improver_still_may():
+    letter, _, _ = build_prompt('cover_letter', RESUME, job_description=JD)
+    assert '[X%]' not in letter
+    bullets, _, _ = build_prompt('bullets', '', bullets='- did things')
+    assert '[X%]' in bullets
+
+
+def test_linkedin_prompt_covers_every_part_and_stays_factual():
+    system, user, max_tokens = build_prompt('linkedin', RESUME, extra='data analyst')
+    for label in ('Headline options:', 'About section:', 'Experience entries:', 'Education and certifications:',
+                  'Skills to list:', 'Profile checklist:'):
+        assert label in system, label
+    assert 'do not upgrade a title' in system and 'dates exactly as in the resume' in system
+    assert 'data analyst' not in system and 'data analyst' in user   # the user's text never enters the system prompt
+    assert max_tokens >= 2000
+
+
+def test_linkedin_runs_with_thinking_and_low_temperature(monkeypatch):
+    seen = {}
+
+    def fake(system, user, max_tokens, temperature=0.6, thinking_budget=0):
+        seen.update(t=temperature, think=thinking_budget)
+        return 'ok'
+
+    monkeypatch.setattr(ai_tools, 'call_gemini', fake)
+    ai_tools.run_tool('linkedin', resume_text=RESUME)
+    assert seen['think'] > 0 and seen['t'] <= 0.5
+    ai_tools.run_tool('cover_letter', resume_text=RESUME, job_description=JD)
+    assert seen['think'] == 0 and seen['t'] >= 0.7
+
+
+def test_thinking_tokens_are_added_to_the_answer_budget(monkeypatch):
+    monkeypatch.setattr(ai_tools.Config, 'GEMINI_MODEL', 'gemini-2.5-flash')
+    cfg = ai_tools._generation_config(2000, 0.4, 1024)
+    assert cfg['thinkingConfig'] == {'thinkingBudget': 1024} and cfg['maxOutputTokens'] == 3024
+
+
+def test_skills_not_in_the_resume_are_removed_from_the_linkedin_skills_line():
+    reply = '\n'.join(['About section:', 'Hi.', '', 'Skills to list:',
+                       'Python, Flask, Kubernetes, REST APIs, Machine Learning', '', 'Profile checklist:', '- photo'])
+    resume = 'Built a Flask REST API in Python with pytest.'
+    out = ai_tools.keep_skills_found_in_resume(reply, resume)
+    assert 'Python, Flask, REST APIs' in out
+    assert 'Kubernetes' not in out and 'Machine Learning' not in out
+    assert 'Profile checklist:' in out   # the rest of the reply is untouched
+
+
+def test_stock_phrases_are_detected_and_listed_in_the_prompt():
+    assert 'eager to' in ai_tools.stock_phrases_in('I am Eager to contribute and it aligns with the role')
+    assert ai_tools.stock_phrases_in('I built a dashboard and cut report time by 40%.') == []
+    system, _, _ = build_prompt('cover_letter', RESUME, job_description=JD)
+    assert '"aligns with"' in system and '"eager to"' in system
+
+
+def test_a_letter_with_stock_phrases_gets_one_rewrite_pass(monkeypatch):
+    calls = []
+
+    def fake(system, user, max_tokens, temperature=0.6, thinking_budget=0):
+        calls.append(system)
+        if len(calls) == 1:
+            return 'Dear team, I am eager to join you. I built a dashboard that cut report time by 40 percent last year at work.'
+        return 'Dear team, I would like to join you. I built a dashboard that cut report time by 40 percent last year at work.'
+
+    monkeypatch.setattr(ai_tools, 'call_gemini', fake)
+    out = ai_tools.run_tool('cover_letter', resume_text=RESUME, job_description=JD)
+    assert 'eager' not in out and len(calls) == 2
+    assert '"eager to"' in calls[1] and '<draft>' not in out
+
+
+def test_a_clean_letter_costs_a_single_model_call(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ai_tools, 'call_gemini', lambda *a, **k: calls.append(1) or 'Dear team, I built a dashboard.')
+    ai_tools.run_tool('cover_letter', resume_text=RESUME, job_description=JD)
+    assert len(calls) == 1
+
+
+def test_a_failed_or_worse_rewrite_keeps_the_original(monkeypatch):
+    seq = iter(['Dear team, I am eager to join you and I built a dashboard that cut report time by 40 percent.', 'x'])
+    monkeypatch.setattr(ai_tools, 'call_gemini', lambda *a, **k: next(seq))
+    out = ai_tools.run_tool('cover_letter', resume_text=RESUME, job_description=JD)
+    assert 'eager to join you' in out
