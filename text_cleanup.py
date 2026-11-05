@@ -39,6 +39,9 @@ def plain_text(text):
     text = re.sub(r'[ 	]*[' + re.escape(_BULLET_SYMBOLS) + r'][ 	]*', ' | ', text)
     # en dash between numbers is a range (2022-2024); any other long dash is a pause, so use a comma
     text = re.sub(r'(?<=\d)\s*[–—―]\s*(?=\d)', '-', text)
+    # "Nov 2025 – Jul 2026" and "2022 – Present" are date ranges too: keep them as "Nov 2025 - Jul 2026"
+    text = re.sub(r'(?<=\d)\s*[–—―]\s*(?=(?:present|current|now|today|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b)',
+                  ' - ', text, flags=re.IGNORECASE)
     text = re.sub(r'\s*[—―]\s*', ', ', text)
     text = re.sub(r'\s+–\s+', ', ', text)
     text = text.replace('–', '-')

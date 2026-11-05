@@ -4718,3 +4718,17 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offs
 .ai-chat-apply-btn { background: var(--brand); color: var(--on-brand); }
 .ai-chat-apply-btn:hover { filter: brightness(0.93); }
 .ai-chat-apply-btn:disabled { opacity: 0.65; cursor: default; filter: none; }
+
+/* Contrast (found by an automated WCAG check): white text on the old red was 3.8:1, red text on the pale red
+   badge was 3.95:1. Both now clear the 4.5:1 minimum. */
+.btn-danger { background: linear-gradient(145deg, #dc2626, #b91c1c); color: #fff; }
+.btn-danger:hover { background: linear-gradient(145deg, #e02f2f, #c42020); }
+.role-fit.low { color: #b91c1c; }
+.raw-text-block:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+/* Tables: on laptop widths (about 1100 to 1400px) the History table was a few pixels wider than its card, so the
+   Delete button was clipped. Tighter cell padding there lets all seven columns fit; narrower screens still scroll. */
+@media (max-width: 1400px) and (min-width: 769px) {
+    table th, table td { padding-left: 0.6rem; padding-right: 0.6rem; }
+    .history-card-actions, table td .btn-sm { white-space: nowrap; }
+}

@@ -36,3 +36,22 @@ def test_a_wrong_method_is_a_styled_405(client):
     assert resp.status_code == 404
     resp = client.delete('/health')
     assert resp.status_code == 405 and 'That action is not allowed' in resp.get_data(as_text=True)
+
+
+def test_every_response_carries_the_basic_security_headers(client):
+    for path in ('/login', '/no-such-page', '/static/css/style.css'):
+        h = client.get(path).headers
+        assert h['X-Content-Type-Options'] == 'nosniff', path
+        assert h['X-Frame-Options'] == 'DENY', path
+        assert 'strict-origin' in h['Referrer-Policy'], path
+        csp = h['Content-Security-Policy']
+        assert "frame-ancestors 'none'" in csp and "form-action 'self'" in csp, path
+        assert 'script-src' not in csp      # deliberately not set: pages use inline scripts and CDN libraries
+
+
+def test_hsts_is_only_sent_when_the_site_is_served_over_https(client, monkeypatch):
+    from app import Config
+    monkeypatch.setattr(Config, 'SESSION_COOKIE_SECURE', False)
+    assert 'Strict-Transport-Security' not in client.get('/login').headers
+    monkeypatch.setattr(Config, 'SESSION_COOKIE_SECURE', True)
+    assert 'max-age=' in client.get('/login').headers['Strict-Transport-Security']

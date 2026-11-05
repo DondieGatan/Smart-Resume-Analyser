@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 import io
 import json
@@ -209,6 +210,14 @@ def _send_verification_email(email):
     return True
 
 
+# Server-side limits for sign-up. The form's type="email" only helps people whose browser enforces it; anything
+# posting directly could otherwise create an account with an invalid address or a huge password to hash.
+EMAIL_PATTERN = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+MAX_NAME_LENGTH = 100
+MAX_EMAIL_LENGTH = 254
+MAX_PASSWORD_LENGTH = 128
+
+
 @app.route('/register', methods=['GET', 'POST'])
 @limiter.limit('5 per hour', methods=['POST'])
 def register():
@@ -226,12 +235,18 @@ def register():
         errors = []
         if not full_name:
             errors.append('Full name is required.')
+        if len(full_name) > MAX_NAME_LENGTH:
+            errors.append(f'Name must be {MAX_NAME_LENGTH} characters or fewer.')
         if not email:
             errors.append('Email is required.')
+        elif len(email) > MAX_EMAIL_LENGTH or not EMAIL_PATTERN.match(email):
+            errors.append('Please enter a valid email address.')
         if not password:
             errors.append('Password is required.')
         elif len(password) < 6:
             errors.append('Password must be at least 6 characters.')
+        elif len(password) > MAX_PASSWORD_LENGTH:
+            errors.append(f'Password must be {MAX_PASSWORD_LENGTH} characters or fewer.')
         if password != confirm_password:
             errors.append('Passwords do not match.')
 
@@ -640,6 +655,9 @@ def personalize(resume_id):
 # Feature 3: Smart Job-Match Analysis
 # --------------------------------------------------------------------------
 
+MAX_JOB_DESCRIPTION_CHARS = 20000    # a job post is a few thousand characters; more only costs matching time
+
+
 @app.route('/job-match/<int:resume_id>', methods=['GET', 'POST'])
 @login_required
 def job_match(resume_id):
@@ -653,7 +671,7 @@ def job_match(resume_id):
     job_description = ''
 
     if request.method == 'POST':
-        job_description = request.form.get('job_description', '')
+        job_description = request.form.get('job_description', '')[:MAX_JOB_DESCRIPTION_CHARS]
         if job_description.strip():
             match_result = match_job_description(
                 resume.get('raw_text', ''),
@@ -720,7 +738,8 @@ def api_resume_chat():
         return jsonify({'error': str(e)}), 400
     except requests.exceptions.RequestException:
         app.logger.exception('Resume chat: Gemini request failed')
-        return jsonify({'error': 'The AI assistant is temporarily unavailable. Please try again shortly.'}), 502
+        return jsonify({'error': 'The AI assistant is busy right now. Please try again in a minute. The Review '
+                                 'button still gives a quick automatic check in the meantime.'}), 502
     except Exception:
         app.logger.exception('Resume chat: unexpected error')
         return jsonify({'error': 'Something went wrong. Please try again.'}), 500
@@ -807,6 +826,27 @@ ASSET_VERSION = _static_version()
 @app.context_processor
 def _inject_asset_version():
     return {'asset_v': ASSET_VERSION}
+
+
+# --------------------------------------------------------------------------
+# Security headers
+# --------------------------------------------------------------------------
+
+@app.after_request
+def _security_headers(response):
+    """Cheap, low-risk browser protections on every response. No script-src policy is set on purpose: pages still
+    use a few inline scripts and CDN libraries, and a half-right policy would break them. The directives below
+    stop the app being framed by another site (clickjacking), make browsers trust the declared content types,
+    keep full URLs out of the Referer header sent to other sites, and pin forms and <base> to this site."""
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+    response.headers.setdefault('Content-Security-Policy',
+                                "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'")
+    if Config.SESSION_COOKIE_SECURE:      # only when served over HTTPS (Render), never on a local http:// server
+        response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+    return response
 
 
 # --------------------------------------------------------------------------
