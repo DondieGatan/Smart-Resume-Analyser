@@ -16,9 +16,13 @@ else is decided here on the server:
 """
 import re
 
+import requests
+
 import gemini_client
+import offline_review
 from resume_templates import RESUME_TEMPLATES
 from text_cleanup import clean_reply
+from writing_rules import HUMAN_RULES
 
 DEFAULT_TEMPLATE = 'universal'
 MAX_MESSAGE_CHARS = 2000
@@ -27,6 +31,8 @@ MAX_DRAFT_CHARS = 6000
 MAX_HISTORY_TURNS = 10
 MAX_TURN_CHARS = 2000
 MAX_OUTPUT_TOKENS = 2048
+CHAT_TIMEOUT_SECONDS = 30       # total time budget for a chat answer, across the main and the fallback model
+REVIEW_TIMEOUT_SECONDS = 40     # the whole-resume review writes more, so it gets a little longer
 
 REVIEW_LABEL = 'Review my whole resume for gaps'
 REVIEW_REQUEST = (
@@ -72,9 +78,11 @@ def build_system_prompt(sections):
         'issues, and keep advice ATS-friendly (simple formatting, no tables or graphics). Keep replies concise and '
         "grounded in the user's actual draft, and do not ask them to repeat what is already there. Never invent "
         'employers, job titles, dates, degrees or numbers that are not in the draft; if a number would help, tell '
-        'the user to add their real figure. '
-        'Reply in plain text only: no markdown, no asterisks, no # headings, no backticks, and use only ordinary '
-        'keyboard characters (no em dashes, curly quotes or bullet symbols). Use plain dashes or numbers for lists.\n\n'
+        'the user to add their real figure. A suggested replacement may only use facts that are already in the '
+        'draft: do not add outcomes, benefits, team sizes or features the draft does not mention (for example '
+        '"improving efficiency"); if the draft is thin, make the wording sharper and say what is missing instead. '
+        'Reply in plain text only: no markdown, no asterisks, no # headings, no backticks. Use plain dashes or '
+        'numbers for lists. ' + HUMAN_RULES + '\n\n'
         'The resume has these sections, in order:\n' + section_legend(sections) + '\n\n'
         'When you have a concrete, ready-to-use replacement for one of the single-text-block sections, wrap ONLY '
         "that replacement text in a marker on its own lines, using the section's id from the list, like this:\n"
@@ -170,9 +178,16 @@ def chat(message, history=None, draft=None, action=None, template_id=DEFAULT_TEM
     try:
         answer = gemini_client.generate(build_system_prompt(sections),
                                         build_messages(message, history, draft, sections),
-                                        max_tokens=MAX_OUTPUT_TOKENS, temperature=0.7, timeout=30)
+                                        max_tokens=MAX_OUTPUT_TOKENS, temperature=0.7,
+                                        timeout=REVIEW_TIMEOUT_SECONDS if action == 'review' else CHAT_TIMEOUT_SECONDS)
     except gemini_client.EmptyAnswer:
+        if action == 'review':
+            return offline_review.review(draft, sections)
         raise AssistantError('The assistant did not return an answer for that. Try asking in a different way.')
+    except requests.exceptions.RequestException:
+        if action == 'review':      # busy, rate limited or too slow: the review button must never end in an error
+            return offline_review.review(draft, sections)
+        raise
 
     reply = clean_reply(answer.text)
     parts = parse_reply(reply, sections)

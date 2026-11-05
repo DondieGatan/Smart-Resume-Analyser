@@ -307,7 +307,7 @@
 <div class="card">
     <div class="card-header">Where These Skills Appear in Your Resume</div>
     <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:0.75rem;">Skills detected above are highlighted below, so you can see exactly where each one was found.</p>
-    <div class="raw-text-block">{{ highlighted_text|safe }}</div>
+    <div class="raw-text-block" tabindex="0" role="region" aria-label="Resume text with detected skills highlighted">{{ highlighted_text|safe }}</div>
 </div>
 {% endif %}
 

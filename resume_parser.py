@@ -9,6 +9,9 @@ from nltk.corpus import stopwords
 
 from analyzer_data import SKILLS_DB, DEGREE_KEYWORDS, JOB_TITLES
 
+MAX_NAME_SEARCH_CHARS = 20000   # the name is near the top; nothing deeper is read
+MAX_NAME_LINE_CHARS = 500
+
 
 def extract_name(text):
     """Extract candidate name from the resume using multiple strategies.
@@ -19,7 +22,10 @@ def extract_name(text):
     3. Handle multi-line names split across PDF lines
     4. Use NLTK NER as a fallback
     """
-    lines = text.strip().split('\n')
+    # A name is at the top of a resume, on a short line. Looking only there keeps this function fast on a file
+    # that is one enormous line (some PDFs extract that way), where the per-character checks below would take
+    # minutes.
+    lines = [line[:MAX_NAME_LINE_CHARS] for line in text[:MAX_NAME_SEARCH_CHARS].strip().split('\n')]
 
     # ── Section headers that are NEVER names ──
     SECTION_HEADERS = {
@@ -99,7 +105,7 @@ def extract_name(text):
         if not line_text or len(line_text) < 2:
             return True
         # Email
-        if re.search(r'[\w.+-]+@[\w-]+\.[\w.-]+', line_text):
+        if re.search(r'[\w.+-]{1,64}@[\w-]{1,63}\.[\w.-]{1,190}', line_text):
             return True
         # URL
         if re.search(r'(http|www\.|\.com|\.org|\.net|\.edu|linkedin|github|portfolio)', line_text, re.IGNORECASE):
@@ -401,17 +407,17 @@ def extract_email(text):
     # Pre-clean OCR artifacts around email patterns
     # Handle cases like "&@ robinvillareal? @gmail.com" or "email : user @gmail.com"
     cleaned_text = text
-    # Remove stray spaces around @ sign
-    cleaned_text = re.sub(r'\s*@\s*', '@', cleaned_text)
+    # Remove stray spaces around @ sign (bounded: an unbounded \s* is quadratic on a long run of spaces)
+    cleaned_text = re.sub(r'\s{0,5}@\s{0,5}', '@', cleaned_text)
     # Remove common OCR noise characters adjacent to email
     cleaned_text = re.sub(r'[&?!#|\\]', '', cleaned_text)
 
     # Find all email addresses
-    emails = re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', cleaned_text)
+    emails = re.findall(r'[\w.+-]{1,64}@[\w-]{1,63}\.[\w.-]{1,190}', cleaned_text)
 
     if not emails:
         # Also try the original text in case cleaning was too aggressive
-        emails = re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', text)
+        emails = re.findall(r'[\w.+-]{1,64}@[\w-]{1,63}\.[\w.-]{1,190}', text)
 
     if not emails:
         return ""
@@ -422,7 +428,7 @@ def extract_email(text):
         # Remove leading/trailing dots or hyphens
         email = email.strip('.-')
         # Validate basic structure
-        if re.match(r'^[\w.+-]+@[\w-]+\.\w{2,}', email):
+        if re.match(r'^[\w.+-]{1,64}@[\w-]{1,63}\.\w{2,}', email):
             cleaned_emails.append(email)
 
     if not cleaned_emails:

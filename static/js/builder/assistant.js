@@ -12,6 +12,7 @@ var CHAT_URL = B.config.chatUrl;
 var STORAGE_KEY = 'builderAiChat_' + B.config.templateId;
 var MAX_STORED_TURNS = 20;
 var REVIEW_LABEL = 'Review my whole resume for gaps';
+var REQUEST_LIMIT_MS = 75000;   // a little over the server's own budget (40s review, 30s chat)
 
 var panel = document.getElementById('ai-chat-panel');
 var toggleBtn = document.getElementById('ai-chat-toggle');
@@ -130,7 +131,8 @@ function send(shown, body, storedUserText) {
     if (pending) return;
     addMessage('user', [{ type: 'text', text: shown }]);
     setPending(true);
-    var typing = addMessage('assistant', [{ type: 'text', text: 'Thinking...' }]);
+    var isReview = body.action === 'review';
+    var typing = addMessage('assistant', [{ type: 'text', text: isReview ? 'Reviewing your whole resume... this can take up to a minute.' : 'Thinking...' }]);
     typing.classList.add('ai-chat-typing');
 
     var payload = Object.assign({
@@ -138,10 +140,16 @@ function send(shown, body, storedUserText) {
         draft: B.draftByText()
     }, body);
 
+    // The server answers within its own time budget (the AI, then a backup model, then for the review an
+    // automatic check), so this limit is only a safety net for a dead connection: the panel can never spin forever.
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var giveUp = controller ? setTimeout(function () { controller.abort(); }, REQUEST_LIMIT_MS) : null;
+
     fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller ? controller.signal : undefined
     }).then(function (res) {
         return res.json().catch(function () { return {}; }).then(function (data) { return { ok: res.ok, data: data }; });
     }).then(function (result) {
@@ -156,10 +164,14 @@ function send(shown, body, storedUserText) {
         } else {
             addMessage('assistant', [{ type: 'text', text: result.data.error || 'Something went wrong. Please try again.' }]);
         }
-    }).catch(function () {
+    }).catch(function (err) {
         typing.remove();
-        addMessage('assistant', [{ type: 'text', text: 'Could not reach the AI assistant. Check your connection and try again.' }]);
+        var timedOut = err && err.name === 'AbortError';
+        addMessage('assistant', [{ type: 'text', text: timedOut
+            ? 'That took too long, so I stopped waiting. Please press the button again.'
+            : 'Could not reach the AI assistant. Check your connection and try again.' }]);
     }).finally(function () {
+        if (giveUp) clearTimeout(giveUp);
         setPending(false);
     });
 }

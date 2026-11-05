@@ -549,6 +549,13 @@ def _cross_validate_name(extracted_name, file_path, email, text):
     return extracted_name
 
 
+# Text beyond this is ignored. A resume is a few thousand characters; the cap only stops a huge or deliberately
+# crafted file from tying up a worker (several analysis stages are not linear in the text length).
+MAX_RESUME_TEXT_CHARS = 150_000
+MAX_EDUCATION_ENTRIES = 10
+MAX_EXPERIENCE_ENTRIES = 30
+
+
 def analyse_resume(file_path, original_filename=None):
     """Main function: analyse a resume (PDF or image) and return all extracted data.
 
@@ -559,7 +566,7 @@ def analyse_resume(file_path, original_filename=None):
     get fed into the same heuristic.
     """
     # Step 1: Extract text (supports PDF and images)
-    text = extract_text(file_path)
+    text = extract_text(file_path)[:MAX_RESUME_TEXT_CHARS]    # a real resume is far shorter; see the constant
 
     if not text.strip():
         has_ocr = _has_tesseract()
@@ -595,8 +602,10 @@ def analyse_resume(file_path, original_filename=None):
     # Cross-validate name against filename and email for extra confidence
     name = _cross_validate_name(name, original_filename or file_path, email, text)
     skills = extract_skills(text)
-    education = extract_education(text)
-    experience = extract_experience(text)
+    # Real resumes have a handful of each. Garbage or crafted text can match thousands of "entries", and every
+    # one is saved as a database row, so the lists are capped.
+    education = extract_education(text)[:MAX_EDUCATION_ENTRIES]
+    experience = extract_experience(text)[:MAX_EXPERIENCE_ENTRIES]
 
     # Step 3: Calculate scores with explanations
     scores, explanations = calculate_scores(text, skills, education, experience)

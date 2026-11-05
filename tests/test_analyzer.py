@@ -224,3 +224,31 @@ class TestEducationAndExperienceExtraction:
         scores, explanations = calculate_scores(CLEAN_RESUME, skills, analyzer_module.extract_education(CLEAN_RESUME), exp)
         assert scores['experience'] >= 70
         assert scores['education'] > 20
+
+
+class TestHostileInput:
+    """Found by a robustness sweep: one very long line made the email search quadratic (over a minute for 200,000
+    characters), and garbage text could produce thousands of 'jobs' to save as database rows."""
+
+    def test_a_200000_character_line_is_analysed_in_seconds(self):
+        import time
+        text = 'a' * 200000
+        t0 = time.time()
+        analyzer_module.extract_email(text)
+        analyzer_module.extract_name(text)
+        assert time.time() - t0 < 15
+
+    def test_a_long_run_of_spaces_does_not_stall_the_email_search(self):
+        import time
+        t0 = time.time()
+        analyzer_module.extract_email(' ' * 200000 + 'x')
+        assert time.time() - t0 < 5
+
+    def test_emails_are_still_found(self):
+        assert analyzer_module.extract_email('Contact: jane.doe@example.com | +1 555 123 4567') == 'jane.doe@example.com'
+        assert analyzer_module.extract_email('mail me: robin @ gmail.com') == 'robin@gmail.com'
+
+    def test_the_caps_exist_and_are_sensible(self):
+        assert 5 <= analyzer_module.MAX_EDUCATION_ENTRIES <= 20
+        assert 10 <= analyzer_module.MAX_EXPERIENCE_ENTRIES <= 100
+        assert analyzer_module.MAX_RESUME_TEXT_CHARS >= 50000

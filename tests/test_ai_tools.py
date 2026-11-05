@@ -243,3 +243,15 @@ def test_a_failed_or_worse_rewrite_keeps_the_original(monkeypatch):
     monkeypatch.setattr(ai_tools, 'call_gemini', lambda *a, **k: next(seq))
     out = ai_tools.run_tool('cover_letter', resume_text=RESUME, job_description=JD)
     assert 'eager to join you' in out
+
+
+@pytest.mark.parametrize('raw,expected', [
+    ('Nov 2025 \u2013 Jul 2026', 'Nov 2025 - Jul 2026'),
+    ('Data Analyst (Nov 2025 \u2014 Present)', 'Data Analyst (Nov 2025 - Present)'),
+    ('2022\u2013Present', '2022 - Present'),
+    ('2021 \u2013 2025', '2021-2025'),
+    ('Led it \u2014 and shipped', 'Led it, and shipped'),
+    ('A pause \u2013 like this', 'A pause, like this'),
+])
+def test_date_ranges_keep_a_dash_while_other_long_dashes_become_commas(raw, expected):
+    assert ai_tools.plain_text(raw) == expected

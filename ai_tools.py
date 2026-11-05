@@ -11,6 +11,7 @@ Safety rules that apply to every tool:
 import re
 
 import gemini_client
+from writing_rules import HUMAN_RULES as _HUMAN_RULES, STOCK_PHRASES, stock_phrases_in  # noqa: F401  (re-exported for tests)
 from text_cleanup import clean_reply, plain_text  # noqa: F401  (plain_text is re-exported for callers and tests)
 
 MAX_RESUME_CHARS = 9000
@@ -55,26 +56,6 @@ TONES = {
 
 # The words and symbols that make AI text easy to spot. Used in the prompts, and the symbols are also
 # cleaned out of every reply afterwards (see plain_text), so the rule does not depend on the model obeying.
-STOCK_PHRASES = (
-    'i am writing to', 'i am excited to apply', 'passionate', 'dynamic', 'thrilled', 'leverage', 'leveraging',
-    'synergy', 'fast-paced', 'proven track record', 'results-driven', 'team player', 'go above and beyond',
-    'i am confident that', 'valuable asset', "in today's", 'innovative', 'cutting-edge', 'eager to', 'esteemed',
-    'aligns with', 'aligns well', 'directly aligns', 'directly matches', 'demonstrating my', 'showcasing',
-    'robust', 'as specified', 'job description', 'earliest convenience', 'strong match', 'great fit',
-    'ensuring code quality', 'enhancing user experience',
-)
-
-_HUMAN_RULES = (
-    'Write the way a real person writes: everyday words, and a mix of short and longer sentences. Prefer '
-    'simple active verbs ("I built", "I fixed") over "I was responsible for". Do not tack a vague benefit '
-    'onto the end of a sentence ("ensuring code quality", "enhancing user experience"); say what actually '
-    'happened instead. Do not use any of these stock phrases or words: '
-    + ', '.join(f'"{p}"' for p in STOCK_PHRASES) + '. '
-    'Use only ordinary keyboard characters: letters, digits and . , ; : \' " ( ) ? ! - / @ %. Never use '
-    'em dashes, en dashes, curly quotes, the ellipsis symbol, bullet symbols, arrows, emojis or any other '
-    'special symbol. Where you would use a dash, use a comma or start a new sentence. '
-)
-
 _SHARED_RULES = (
     'Reply in plain text only: no markdown, no asterisks, no # headings, no backticks, no tables. '
     'Use plain numbers or dashes for lists. Be specific to the person\'s real resume. Never invent '
@@ -207,7 +188,9 @@ def build_prompt(tool, resume_text, job_description='', bullets='', tone='profes
             '"Experience entries:" for each job, internship or project in the resume (at most 4, most recent '
             'first) write one line "Title, Company (dates exactly as in the resume)" (for a freelance or '
             'self-employed role write "Title (Self-employed, dates)") followed by 2 or 3 lines starting with '
-            '"- " that say what was done and the result, using only facts from the resume. '
+            '"- " that say what was done and the result, using only facts from the resume. If the resume gives '
+            'no details for a role, write only its title line and skip it otherwise: never write a line saying '
+            'that details are missing. '
             '"Education and certifications:" list them exactly as the resume gives them (degree, school, year). '
             '"Skills to list:" one comma-separated line of up to 10 skills, ordered by how much they matter for '
             'the target role (or the person\'s current direction if none is given), using only skills that '
@@ -268,11 +251,6 @@ def call_gemini(system_prompt, user_message, max_tokens=1500, temperature=0.6, t
     if reply.truncated:
         return reply.text + '\n\n[The answer was cut short. Press Generate again, or shorten what you pasted.]'
     return reply.text
-
-
-def stock_phrases_in(text):
-    low = (text or '').lower()
-    return [p for p in STOCK_PHRASES if p in low]
 
 
 def _revise_stock_phrases(draft, found, max_tokens):

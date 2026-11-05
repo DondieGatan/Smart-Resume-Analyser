@@ -79,6 +79,9 @@ class Config:
     # just shows a friendly "not configured" message instead of erroring.
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
     GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+    # Used when the main model answers 429/5xx (the free tier's per-model daily and per-minute limits are small).
+    # It has its own quota, so the AI features keep working, with somewhat plainer writing. Set empty to disable.
+    GEMINI_FALLBACK_MODEL = os.environ.get('GEMINI_FALLBACK_MODEL', 'gemini-2.5-flash-lite')
 
     # Password reset token expiry (seconds)
     RESET_TOKEN_EXPIRY = 3600  # 1 hour

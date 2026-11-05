@@ -15,7 +15,7 @@
         <p style="color:var(--gray-500);font-size:0.95rem;">Real-time insights from all analysed resumes</p>
     </div>
     <div class="dash-filters">
-        <select id="field-filter">
+        <select id="field-filter" aria-label="Filter the dashboard by career field">
             <option value="all">All Fields</option>
             {% for field in data.field_distribution %}
             <option value="{{ field.recommended_field }}">{{ field.recommended_field }}</option>
